@@ -20,7 +20,7 @@
     "react-dom": "^18.2.0",
     "react-pdf-highlighter": "^8.0.0-rc.0",
     "react-quick-pinch-zoom": "^5.1.1",
-    "three": "^0.149.0",
+    "three": "^0.135.0",
     "web-ifc-viewer": "^1.0.218"
   },
   "devDependencies": {
