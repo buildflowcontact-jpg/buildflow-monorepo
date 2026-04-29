@@ -1,0 +1,4 @@
+{
+  "rootDirectory": "apps/frontend",
+  "buildCommand": "npm install --legacy-peer-deps && npm run build"
+}

@@ -1,0 +1,36 @@
+{
+  "name": "buildflow-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+    ,
+    "vercel-build": "npm install --legacy-peer-deps && npm run build"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.14.1",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.1",
+    "@tanstack/react-query": "^5.100.6",
+    "graphql": "^16.13.2",
+    "lucide-react": "^0.292.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-pdf-highlighter": "^8.0.0-rc.0",
+    "react-quick-pinch-zoom": "^5.1.1",
+    "three": "^0.149.0",
+    "web-ifc-viewer": "^1.0.218"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0"
+  }
+}

@@ -1,0 +1,4 @@
+- Les tables projects et documents sont créées dans projects_documents.sql (structure minimale, liens avec users et project_id).
+- Les scripts SQL sont prêts à être appliqués dans l'ordre : schema.sql, projects_documents.sql, triggers.sql, rls.sql.
+- Edge Function pour daily_report générée (edge_daily_report.ts).
+- README.md Supabase mis à jour pour guider le déploiement.
