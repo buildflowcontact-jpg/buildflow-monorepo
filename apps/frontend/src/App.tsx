@@ -21,8 +21,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'executer' | 'planifier' | 'piloter' | 'equipe'>('executer');
 
   // Toast context (accessible dans ToastProvider)
-  const toastCtx = typeof window !== 'undefined' ? require('./ui/ToastProvider') : {};
-  const showToast = toastCtx.useToast ? toastCtx.useToast().showToast : undefined;
+  const { showToast } = useToast() || {};
 
   // Écoute temps réel des événements critiques
   const handleRealtimeEvent = useCallback((payload) => {
