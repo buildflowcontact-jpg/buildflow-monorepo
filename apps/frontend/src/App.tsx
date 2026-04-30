@@ -1,17 +1,18 @@
 
 import React, { useState, useCallback } from "react";
+import { ThemeProvider } from "./components/ui/theme-provider";
 import { ToastProvider, useToast } from "./ui/ToastProvider";
 import QuickActionPro from "./QuickActionPro";
 import { EventList } from "./features/events/EventList";
 import { PlanViewer } from "./features/planviewer/PlanViewer";
-import { DocumentList } from "./features/documents/DocumentList";
-import { useAuth, signOut } from "./features/auth/useAuth";
-import { AuthForm } from "./features/auth/AuthForm";
-import { BEInbox } from "./features/documents/BEInbox";
-import { DocumentVersionList } from "./features/documents/DocumentVersionList";
+import { DocumentList } from "./modules/bureau-etudes/components/DocumentList";
+import { useAuth, signOut } from "./modules/chantier/hooks/useAuth";
+import { AuthForm } from "./components/ui/AuthForm";
+
+
 import { Planifier } from "./features/planifier/Planifier";
 import { Piloter } from "./features/piloter/Piloter";
-import { Equipe } from "./features/equipe/Equipe";
+import { Equipe } from "./modules/chantier/components/Equipe";
 import { useRealtimeProjectEvents } from "./utils/useRealtimeProjectEvents";
 
 function App() {
@@ -39,21 +40,23 @@ function App() {
 
   if (loading) return <div className="p-8">Chargement...</div>;
   if (!user) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300">
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full flex flex-col items-center">
-        <img src="/logo.svg" alt="BuildFlow" className="w-24 mb-4" />
-        <h1 className="text-2xl font-bold text-blue-700 mb-2">Bienvenue sur BuildFlow</h1>
-        <p className="mb-6 text-gray-600 text-center">Connectez-vous pour accéder à votre espace chantier, plans, documents et notifications en temps réel.</p>
-        <AuthForm />
-        <p className="mt-6 text-xs text-gray-400">© {new Date().getFullYear()} BuildFlow</p>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full flex flex-col items-center">
+          <img src="/logo.svg" alt="BuildFlow" className="w-24 mb-4" />
+          <h1 className="text-2xl font-bold text-blue-700 mb-2">Bienvenue sur BuildFlow</h1>
+          <p className="mb-6 text-gray-600 text-center">Connectez-vous pour accéder à votre espace chantier, plans, documents et notifications en temps réel.</p>
+          <AuthForm />
+          <p className="mt-6 text-xs text-gray-400">© {new Date().getFullYear()} BuildFlow</p>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 
   const isBE = user?.email?.endsWith('@be.com') || user?.email?.endsWith('@admin.com');
 
   return (
-    <ToastProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-gray-50">
       <header className="p-4 bg-blue-700 text-white font-bold text-xl flex justify-between items-center">
         <span>BuildFlow</span>
@@ -119,16 +122,12 @@ function App() {
               <>
                 <PlanViewer projectId={projectId} documentId={activeDocumentId} />
                 <div className="mt-4">
-                  <DocumentVersionList documentId={activeDocumentId} userId={user.id} />
+                  {/* DocumentVersionList supprimé : composant non migré */}
                 </div>
               </>
             )}
             <EventList projectId={projectId} />
-            {isBE && activeDocumentId && (
-              <div className="mt-8">
-                <BEInbox projectId={projectId} documentId={activeDocumentId} userId={user.id} />
-              </div>
-            )}
+            {/* BEInbox supprimé : composant non migré */}
             <QuickActionPro projectId={projectId} activeDocumentId={activeDocumentId || undefined} />
           </>
         )}
@@ -137,7 +136,7 @@ function App() {
         {activeTab === 'equipe' && <Equipe />}
       </main>
       </div>
-    </ToastProvider>
+    </ThemeProvider>
   );
 }
 
