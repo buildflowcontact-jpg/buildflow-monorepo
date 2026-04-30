@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 
 export function IFCViewer({ url }: { url: string }) {
+    console.log('[LOG] IFCViewer url:', url);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

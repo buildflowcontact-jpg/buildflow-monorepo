@@ -4,6 +4,7 @@ import { PdfLoader, PdfHighlighter, Tip, Highlight, Popup } from "react-pdf-high
 import { Spinner } from '../../ui/Spinner';
 
 export function PDFAnnotator({ url }: { url: string }) {
+    console.log('[LOG] PDFAnnotator url:', url);
   const [highlights, setHighlights] = React.useState<any[]>([]);
 
   return (

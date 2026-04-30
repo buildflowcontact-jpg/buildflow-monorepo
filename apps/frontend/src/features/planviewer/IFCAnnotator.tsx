@@ -2,6 +2,7 @@
 import { Spinner } from '../../ui/Spinner';
 
 export function IFCAnnotator({ url }: { url: string }) {
+    console.log('[LOG] IFCAnnotator url:', url);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedProps, setSelectedProps] = useState<any>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);

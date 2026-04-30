@@ -15,6 +15,7 @@ import { Equipe } from "./features/equipe/Equipe";
 import { useRealtimeProjectEvents } from "./utils/useRealtimeProjectEvents";
 
 function App() {
+    console.log('[LOG] App loaded. window.location:', window.location.href);
   const { user, loading } = useAuth();
   const projectId = "demo-project-uuid";
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
