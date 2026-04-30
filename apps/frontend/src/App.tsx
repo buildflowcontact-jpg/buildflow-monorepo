@@ -38,7 +38,17 @@ function App() {
   }
 
   if (loading) return <div className="p-8">Chargement...</div>;
-  if (!user) return <AuthForm />;
+  if (!user) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300">
+      <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full flex flex-col items-center">
+        <img src="/logo.svg" alt="BuildFlow" className="w-24 mb-4" />
+        <h1 className="text-2xl font-bold text-blue-700 mb-2">Bienvenue sur BuildFlow</h1>
+        <p className="mb-6 text-gray-600 text-center">Connectez-vous pour accéder à votre espace chantier, plans, documents et notifications en temps réel.</p>
+        <AuthForm />
+        <p className="mt-6 text-xs text-gray-400">© {new Date().getFullYear()} BuildFlow</p>
+      </div>
+    </div>
+  );
 
   const isBE = user?.email?.endsWith('@be.com') || user?.email?.endsWith('@admin.com');
 
