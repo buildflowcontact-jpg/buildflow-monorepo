@@ -17,11 +17,17 @@ export function AuthForm() {
     }
   };
 
-  if (sent) return <div className="p-4">Un lien de connexion a été envoyé à <b>{email}</b>.</div>;
+  if (sent) return (
+    <div className="p-4 text-center">
+      <div className="mb-2">Un lien a été envoyé à <b>{email}</b>.</div>
+      <div className="text-gray-600 text-sm">Clique sur le lien reçu pour te connecter ou créer ton compte si tu n’en as pas encore.</div>
+    </div>
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 max-w-xs mx-auto bg-white rounded shadow">
-      <h2 className="font-bold text-lg">Connexion</h2>
+      <h2 className="font-bold text-lg">Connexion ou création de compte</h2>
+      <p className="text-gray-600 text-sm">Entre ton email pour recevoir un lien magique. Si tu n’as pas encore de compte, il sera créé automatiquement.</p>
       <input
         type="email"
         required
