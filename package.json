@@ -2,6 +2,11 @@
   "name": "buildflow-monorepo",
   "private": true,
   "scripts": {
+    "dev:frontend": "npm --prefix ./apps/frontend run dev",
+    "build:frontend": "npm --prefix ./apps/frontend run build",
+    "preview:frontend": "npm --prefix ./apps/frontend run preview -- --host 127.0.0.1 --port 4173 --strictPort",
+    "preview:frontend:4174": "npm --prefix ./apps/frontend run preview -- --host 127.0.0.1 --port 4174 --strictPort",
+    "check:bundle:frontend": "npm --prefix ./apps/frontend run check:bundle",
     "build:backend": "npm --prefix ./apps/backend run build",
     "test:unit": "cd apps/frontend && npx jest --coverage",
     "test:e2e": "cd apps/frontend && npx playwright test",
