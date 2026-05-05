@@ -1,8 +1,11 @@
 import React, { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { AnimatePresence, motion } from "framer-motion"
+import { useZodForm } from "@/hooks/useZodForm"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/Spinner"
+
+import { useToast } from "@/components/ui/ToastProvider";
 import { useProjectDocuments, useCreateDocument, useUpdateDocument, useDeleteDocument } from "../hooks/useProjectDocuments"
 
 const docSchema = z.object({
@@ -24,9 +27,9 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
   const deleteDoc = useDeleteDocument(projectId)
   const [editDoc, setEditDoc] = useState<any>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const { showToast } = useToast() || {};
 
-  const form = useForm<DocForm>({
-    resolver: zodResolver(docSchema),
+  const form = useZodForm(docSchema, {
     defaultValues: { title: "", category: "" }
   })
 
@@ -39,13 +42,19 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
   }, [editDoc, form])
 
   const onSubmit = async (values: DocForm) => {
-    if (editDoc) {
-      await updateDoc.mutateAsync({ id: editDoc.id, ...values })
-    } else {
-      await createDoc.mutateAsync(values)
+    try {
+      if (editDoc) {
+        await updateDoc.mutateAsync({ id: editDoc.id, ...values })
+        showToast && showToast('Document modifié', 'success');
+      } else {
+        await createDoc.mutateAsync(values)
+        showToast && showToast('Document créé', 'success');
+      }
+      setModalOpen(false)
+      setEditDoc(null)
+    } catch (e) {
+      showToast && showToast('Erreur lors de l’enregistrement', 'error');
     }
-    setModalOpen(false)
-    setEditDoc(null)
   }
 
   if (isLoading) return <div>Chargement des documents...</div>
@@ -57,22 +66,47 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
         <Button onClick={() => { setEditDoc(null); setModalOpen(true) }}>Nouveau</Button>
       </div>
       <ul className="divide-y divide-gray-200 bg-white rounded shadow">
-        {docs && docs.length ? docs.map((doc: any) => (
-          <li key={doc.id} className="flex items-center justify-between px-4 py-2 hover:bg-gray-50">
-            <button
-              className="text-left flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onClick={() => onSelect(doc.id)}
-              aria-label={`Ouvrir ${doc.title}`}
+        <AnimatePresence>
+          {docs && docs.length ? docs.map((doc: any) => (
+            <motion.li
+              key={doc.id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="flex items-center justify-between px-4 py-2 hover:bg-gray-50"
             >
-              <span className="font-medium">{doc.title}</span>
-              {doc.category && <span className="ml-2 text-xs text-gray-500">[{doc.category}]</span>}
-            </button>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setEditDoc(doc); setModalOpen(true) }} aria-label="Éditer">✏️</Button>
-              <Button variant="destructive" size="sm" onClick={() => deleteDoc.mutateAsync(doc.id)} aria-label="Supprimer">🗑️</Button>
-            </div>
-          </li>
-        )) : <li className="px-4 py-2 text-gray-500">Aucun document</li>}
+              <button
+                className="text-left flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onClick={() => onSelect(doc.id)}
+                aria-label={`Ouvrir ${doc.title}`}
+              >
+                <span className="font-medium">{doc.title}</span>
+                {doc.category && <span className="ml-2 text-xs text-gray-500">[{doc.category}]</span>}
+              </button>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => { setEditDoc(doc); setModalOpen(true) }} aria-label="Éditer">✏️</Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleteDoc.isLoading}
+                  onClick={async () => {
+                    try {
+                      await deleteDoc.mutateAsync(doc.id);
+                      showToast && showToast('Document supprimé', 'success');
+                    } catch (e) {
+                      showToast && showToast('Erreur lors de la suppression', 'error');
+                    }
+                  }}
+                  aria-label="Supprimer"
+                >
+                  {deleteDoc.isLoading ? <Spinner size={16} /> : '🗑️'}
+                </Button>
+              </div>
+            </motion.li>
+          )) : <li className="px-4 py-2 text-gray-500">Aucun document</li>}
+        </AnimatePresence>
       </ul>
       {modalOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" role="dialog" aria-modal="true">
@@ -106,7 +140,7 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="ghost" onClick={() => { setModalOpen(false); setEditDoc(null) }}>Annuler</Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Enregistrement..." : "Valider"}
+                {form.formState.isSubmitting ? <Spinner size={16} /> : "Valider"}
               </Button>
             </div>
           </form>
@@ -114,5 +148,4 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
       )}
     </div>
   )
-}
 }

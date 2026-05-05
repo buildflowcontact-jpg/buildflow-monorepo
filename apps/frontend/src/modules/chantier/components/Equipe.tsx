@@ -1,8 +1,8 @@
 import React, { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useZodForm } from "@/hooks/useZodForm"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/Spinner"
 
 const memberSchema = z.object({
   name: z.string().min(2, "Nom requis")
@@ -15,8 +15,7 @@ export interface EquipeProps {
 
 export function Equipe({ membres: initialMembres = [] }: EquipeProps) {
   const [membres, setMembres] = useState(initialMembres)
-  const form = useForm<MemberForm>({
-    resolver: zodResolver(memberSchema),
+  const form = useZodForm(memberSchema, {
     defaultValues: { name: "" }
   })
 
@@ -35,17 +34,19 @@ export function Equipe({ membres: initialMembres = [] }: EquipeProps) {
             id="name"
             type="text"
             {...form.register("name")}
-            className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary"
             required
           />
           {form.formState.errors.name && <p className="text-red-600 text-xs mt-1">{form.formState.errors.name.message}</p>}
         </div>
-        <Button type="submit" disabled={form.formState.isSubmitting}>Ajouter</Button>
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? <Spinner size={16} /> : "Ajouter"}
+        </Button>
       </form>
-      <ul className="divide-y divide-gray-200 bg-white rounded shadow">
+      <ul className="divide-y divide-border bg-card rounded shadow border border-border">
         {membres.length ? membres.map((m) => (
-          <li key={m.id} className="px-4 py-2">{m.name}</li>
-        )) : <li className="px-4 py-2 text-gray-500">Aucun membre</li>}
+          <li key={m.id} className="px-4 py-2 text-foreground">{m.name}</li>
+        )) : <li className="px-4 py-2 text-muted-foreground">Aucun membre</li>}
       </ul>
     </div>
   )

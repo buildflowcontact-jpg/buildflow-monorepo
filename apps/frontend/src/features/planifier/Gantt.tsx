@@ -1,8 +1,8 @@
 import React, { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useZodForm } from "@/hooks/useZodForm"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/Spinner"
 
 const taskSchema = z.object({
   name: z.string().min(2, "Nom requis"),
@@ -21,8 +21,7 @@ const initialTasks = [
 
 export function Gantt() {
   const [tasks, setTasks] = useState(initialTasks)
-  const form = useForm<TaskForm>({
-    resolver: zodResolver(taskSchema),
+  const form = useZodForm(taskSchema, {
     defaultValues: { name: "", start: "", end: "", dependencies: [] }
   })
 
@@ -43,52 +42,54 @@ export function Gantt() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap gap-2 items-end" aria-label="Ajouter une tâche">
         <div>
           <label htmlFor="name" className="block text-sm font-medium">Nom</label>
-          <input id="name" type="text" {...form.register("name")} className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500" required />
+          <input id="name" type="text" {...form.register("name")} className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary" required />
           {form.formState.errors.name && <p className="text-red-600 text-xs mt-1">{form.formState.errors.name.message}</p>}
         </div>
         <div>
           <label htmlFor="start" className="block text-sm font-medium">Début</label>
-          <input id="start" type="date" {...form.register("start")} className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500" required />
+          <input id="start" type="date" {...form.register("start")} className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary" required />
           {form.formState.errors.start && <p className="text-red-600 text-xs mt-1">{form.formState.errors.start.message}</p>}
         </div>
         <div>
           <label htmlFor="end" className="block text-sm font-medium">Fin</label>
-          <input id="end" type="date" {...form.register("end")} className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500" required />
+          <input id="end" type="date" {...form.register("end")} className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary" required />
           {form.formState.errors.end && <p className="text-red-600 text-xs mt-1">{form.formState.errors.end.message}</p>}
         </div>
         <div>
           <label htmlFor="dependencies" className="block text-sm font-medium">Dépendances</label>
           <select id="dependencies" multiple {...form.register("dependencies")}
-            className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+            className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary">
             {tasks.map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
         </div>
-        <Button type="submit" disabled={form.formState.isSubmitting}>Ajouter</Button>
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? <Spinner size={16} /> : "Ajouter"}
+        </Button>
       </form>
       <div className="overflow-x-auto">
-        <table className="min-w-full border text-xs">
+        <table className="min-w-full border border-border text-xs bg-card text-foreground">
           <thead>
             <tr>
-              <th className="border p-2">Tâche</th>
-              <th className="border p-2">Début</th>
-              <th className="border p-2">Fin</th>
-              <th className="border p-2">Dépendances</th>
+              <th className="border border-border p-2 bg-muted text-muted-foreground">Tâche</th>
+              <th className="border border-border p-2 bg-muted text-muted-foreground">Début</th>
+              <th className="border border-border p-2 bg-muted text-muted-foreground">Fin</th>
+              <th className="border border-border p-2 bg-muted text-muted-foreground">Dépendances</th>
             </tr>
           </thead>
           <tbody>
             {tasks.map(task => (
-              <tr key={task.id}>
-                <td className="border p-2 font-bold">{task.name}</td>
-                <td className="border p-2">{task.start}</td>
-                <td className="border p-2">{task.end}</td>
-                <td className="border p-2">{task.dependencies.map((dep: number) => tasks.find(t => t.id === dep)?.name).join(', ')}</td>
+              <tr key={task.id} className="hover:bg-accent/50">
+                <td className="border border-border p-2 font-bold">{task.name}</td>
+                <td className="border border-border p-2">{task.start}</td>
+                <td className="border border-border p-2">{task.end}</td>
+                <td className="border border-border p-2">{task.dependencies.map((dep: number) => tasks.find(t => t.id === dep)?.name).join(', ')}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="mt-4 text-gray-500">(Gantt visuel à venir)</div>
+        <div className="mt-4 text-muted-foreground">(Gantt visuel à venir)</div>
       </div>
     </div>
   )

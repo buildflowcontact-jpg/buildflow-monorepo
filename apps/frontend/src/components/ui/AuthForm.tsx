@@ -1,9 +1,9 @@
 import React from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useZodForm } from "../../hooks/useZodForm"
 import * as z from "zod"
 import { signInWithMagicLink } from "../../modules/chantier/hooks/useAuth"
 import { Button } from "./button"
+import { Spinner } from "./Spinner"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" })
@@ -12,9 +12,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>
 
 export function AuthForm() {
-  const { register, handleSubmit, formState: { errors, isSubmitting, isSubmitSuccessful } } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
-  })
+  const { register, handleSubmit, formState: { errors, isSubmitting, isSubmitSuccessful } } = useZodForm(formSchema)
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -40,7 +38,7 @@ export function AuthForm() {
           id="email"
           type="email"
           autoComplete="email"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+          className="mt-1 block w-full rounded-md border border-border bg-background text-foreground shadow-sm focus:border-primary focus:ring-primary"
           {...register("email")}
           required
         />
@@ -48,7 +46,7 @@ export function AuthForm() {
       </div>
       {error && <div className="text-red-600 text-sm text-center">{error}</div>}
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Envoi..." : "Recevoir un lien de connexion"}
+        {isSubmitting ? <Spinner size={16} /> : "Recevoir un lien de connexion"}
       </Button>
     </form>
   )

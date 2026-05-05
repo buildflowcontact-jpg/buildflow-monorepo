@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useProjectEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from './useProjectEvents';
 import { EventModal } from './EventModal';
 import { useToast } from '../../ui/ToastProvider';
@@ -17,7 +18,7 @@ export function EventList({ projectId }: { projectId: string }) {
   return (
     <div>
       <button
-        className="mb-4 w-full px-4 py-4 bg-blue-700 text-white rounded-lg font-bold text-lg shadow-md active:scale-95 transition"
+        className="mb-4 w-full px-4 py-4 bg-primary text-primary-foreground rounded-lg font-bold text-lg shadow-md active:scale-95 transition-colors hover:bg-primary/90"
         onClick={() => { setEditEvent(null); setModalOpen(true); }}
         style={{ minHeight: 56 }}
       >
@@ -27,39 +28,49 @@ export function EventList({ projectId }: { projectId: string }) {
         <div>Aucun événement pour ce projet.</div>
       ) : (
         <ul className="space-y-4">
-          {events.map((event: any) => (
-            <li key={event.id} className="bg-white rounded-xl shadow p-4 flex flex-col gap-2">
-              <div className="text-xs text-gray-400">{new Date(event.created_at).toLocaleString()}</div>
-              <div className="font-bold text-blue-700">{event.type}</div>
-              {event.description && <div>{event.description}</div>}
-              {event.metadata?.image_url && (
-                <img src={event.metadata.image_url} alt="photo" className="w-32 h-32 object-cover rounded" />
-              )}
-              <div className="flex gap-2 mt-2">
-                <button
-                  className="text-xs text-blue-700 underline px-2 py-1 rounded"
-                  style={{ fontSize: 16 }}
-                  onClick={() => { setEditEvent(event); setModalOpen(true); }}
-                >
-                  Éditer
-                </button>
-                <button
-                  className="text-xs text-red-600 underline px-2 py-1 rounded"
-                  style={{ fontSize: 16 }}
-                  onClick={() => {
-                    if (window.confirm('Supprimer cet événement ?')) {
-                      deleteEvent.mutate(event.id, {
-                        onSuccess: () => showToast('Événement supprimé', 'success'),
-                        onError: () => showToast('Erreur lors de la suppression', 'error'),
-                      });
-                    }
-                  }}
-                >
-                  Supprimer
-                </button>
-              </div>
-            </li>
-          ))}
+          <AnimatePresence>
+            {events.map((event: any) => (
+              <motion.li
+                key={event.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="bg-card rounded-xl shadow p-4 flex flex-col gap-2 border border-border"
+              >
+                <div className="text-xs text-muted-foreground">{new Date(event.created_at).toLocaleString()}</div>
+                <div className="font-bold text-primary">{event.type}</div>
+                {event.description && <div className="text-foreground">{event.description}</div>}
+                {event.metadata?.image_url && (
+                  <img src={event.metadata.image_url} alt="photo" className="w-32 h-32 object-cover rounded" />
+                )}
+                <div className="flex gap-2 mt-2">
+                  <button
+                    className="text-xs text-primary underline px-2 py-1 rounded hover:bg-accent transition-colors"
+                    style={{ fontSize: 16 }}
+                    onClick={() => { setEditEvent(event); setModalOpen(true); }}
+                  >
+                    Éditer
+                  </button>
+                  <button
+                    className="text-xs text-destructive underline px-2 py-1 rounded hover:bg-accent transition-colors"
+                    style={{ fontSize: 16 }}
+                    onClick={() => {
+                      if (window.confirm('Supprimer cet événement ?')) {
+                        deleteEvent.mutate(event.id, {
+                          onSuccess: () => showToast('Événement supprimé', 'success'),
+                          onError: () => showToast('Erreur lors de la suppression', 'error'),
+                        });
+                      }
+                    }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </motion.li>
+            ))}
+          </AnimatePresence>
         </ul>
       )}
       <EventModal
