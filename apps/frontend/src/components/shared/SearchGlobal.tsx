@@ -48,11 +48,6 @@ export function SearchGlobal() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setIsOpen((current) => !current);
-      }
-
       if (event.key === 'Escape') {
         setIsOpen(false);
       }
@@ -87,7 +82,6 @@ export function SearchGlobal() {
       >
         <Search size={16} />
         <span className="hidden md:inline">Rechercher</span>
-        <span className="bf-keycap hidden md:inline rounded px-1.5 py-0.5 text-[10px] font-bold">Ctrl K</span>
       </button>
 
       {isOpen ? (

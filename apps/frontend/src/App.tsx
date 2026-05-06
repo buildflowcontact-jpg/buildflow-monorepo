@@ -20,6 +20,7 @@ import { useUIStore } from "./store/uiStore";
 import { supabase } from "@/lib/supabase";
 import { Spinner } from "./ui/Spinner";
 import { t } from "./i18n";
+import { CreateProjectPanel } from "./components/shared/CreateProjectPanel";
 
 const QuickActionPro = React.lazy(() => import("./QuickActionPro"));
 const EventList = React.lazy(() => import("./features/events/EventList").then((module) => ({ default: module.EventList })));
@@ -188,10 +189,7 @@ function App() {
             ) : null}
 
             {!isProjectsLoading && !resolvedProjectId ? (
-              <div className="surface-panel p-5 md:p-6">
-                <h2 className="text-xl font-black tracking-tight text-slate-900 mb-1">Aucun projet disponible</h2>
-                <p className="text-sm text-slate-600">Ajoutez ou synchronisez un projet pour activer les vues metier.</p>
-              </div>
+              <CreateProjectPanel onCreated={setCurrentProjectId} />
             ) : null}
 
             {!isProjectsLoading && resolvedProjectId ? (
