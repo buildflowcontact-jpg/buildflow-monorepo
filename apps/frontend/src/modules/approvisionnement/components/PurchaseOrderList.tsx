@@ -6,6 +6,8 @@ import {
 } from '../hooks/useProcurement';
 import type { PurchaseOrderRow } from '../hooks/useProcurement';
 import { useSuppliers } from '../hooks/useSuppliers';
+import { uploadAttachmentToSupabase } from '../services/uploadAttachmentToSupabase';
+import { supabase } from '@/lib/supabase';
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   draft: { label: 'Brouillon', className: 'bg-gray-100 text-gray-600' },
@@ -30,6 +32,7 @@ interface Props {
 export function PurchaseOrderList({ projectId }: Props) {
   const { data: orders = [], isLoading } = usePurchaseOrders(projectId);
   const { data: suppliers = [] } = useSuppliers(projectId);
+  const [existingOrderDocs, setExistingOrderDocs] = useState<Record<string, string[]>>({});
   const createOrder = useCreatePurchaseOrder(projectId);
   const updateStatus = useUpdatePurchaseOrderStatus(projectId);
   const [showForm, setShowForm] = useState(false);
@@ -41,11 +44,55 @@ export function PurchaseOrderList({ projectId }: Props) {
     expected_delivery_at: '',
     notes: '',
   });
+  const [attachments, setAttachments] = useState<File[]>([]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    async function loadDocuments() {
+      const references = orders.map((order) => order.reference).filter(Boolean);
+      if (references.length === 0) {
+        if (mounted) setExistingOrderDocs({});
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('documents')
+        .select('id, title, category')
+        .eq('project_id', projectId)
+        .eq('category', 'purchase_order_attachment');
+      if (error || !data) return;
+
+      const { data: versions } = await supabase
+        .from('document_versions')
+        .select('document_id, file_url');
+
+      const byDocId = new Map<string, string[]>();
+      (versions || []).forEach((version) => {
+        const urls = byDocId.get(version.document_id) ?? [];
+        urls.push(version.file_url);
+        byDocId.set(version.document_id, urls);
+      });
+
+      const byRef: Record<string, string[]> = {};
+      data.forEach((doc) => {
+        const ref = doc.title.split('::')[0]?.trim();
+        if (!ref) return;
+        byRef[ref] = [...(byRef[ref] ?? []), ...(byDocId.get(doc.id) ?? [])];
+      });
+
+      if (mounted) setExistingOrderDocs(byRef);
+    }
+
+    loadDocuments();
+    return () => {
+      mounted = false;
+    };
+  }, [orders, projectId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.reference.trim()) return;
-    await createOrder.mutateAsync({
+    const createdOrder = await createOrder.mutateAsync({
       reference: form.reference.trim(),
       supplier_id: form.supplier_id || null,
       total_ht: form.total_ht ? parseFloat(form.total_ht) : null,
@@ -53,7 +100,32 @@ export function PurchaseOrderList({ projectId }: Props) {
       expected_delivery_at: form.expected_delivery_at || null,
       notes: form.notes.trim() || null,
     });
+
+    if (attachments.length > 0) {
+      for (const file of attachments) {
+        const path = await uploadAttachmentToSupabase(file, projectId, 'order');
+        const { data: doc, error: docError } = await supabase
+          .from('documents')
+          .insert({
+            project_id: projectId,
+            title: `${createdOrder.reference} :: ${file.name}`,
+            category: 'purchase_order_attachment',
+          })
+          .select('id')
+          .single();
+        if (docError || !doc) continue;
+
+        await supabase.from('document_versions').insert({
+          document_id: doc.id,
+          file_url: path,
+          is_bpe: false,
+          version_label: 'v1',
+        });
+      }
+    }
+
     setForm({ reference: '', supplier_id: '', total_ht: '', ordered_at: '', expected_delivery_at: '', notes: '' });
+    setAttachments([]);
     setShowForm(false);
   };
 
@@ -139,6 +211,18 @@ export function PurchaseOrderList({ projectId }: Props) {
               rows={2}
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Documents commande</label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => setAttachments(Array.from(e.target.files ?? []))}
+              className="w-full border rounded px-2 py-1 text-sm"
+            />
+            {attachments.length > 0 ? (
+              <p className="text-xs text-gray-500 mt-1">{attachments.length} document(s) prêt(s) à l'envoi</p>
+            ) : null}
+          </div>
           <div className="flex gap-2">
             <button
               type="submit"
@@ -166,6 +250,8 @@ export function PurchaseOrderList({ projectId }: Props) {
             const supplierName = suppliers.find((s) => s.id === order.supplier_id)?.name;
             const statusInfo = STATUS_LABELS[order.status ?? ''] ?? { label: order.status, className: 'bg-gray-100 text-gray-600' };
             const transitions = STATUS_TRANSITIONS[order.status ?? ''] ?? [];
+            const attachmentUrls = existingOrderDocs[order.reference] ?? [];
+            const isLate = Boolean(order.expected_delivery_at && new Date(order.expected_delivery_at) < new Date() && order.status !== 'delivered');
 
             return (
               <div key={order.id} className="py-3 space-y-1">
@@ -190,10 +276,27 @@ export function PurchaseOrderList({ projectId }: Props) {
                   {order.expected_delivery_at && (
                     <span>Livraison : {new Date(order.expected_delivery_at).toLocaleDateString('fr-FR')}</span>
                   )}
+                  {isLate ? <span className="text-red-600 font-semibold">En retard</span> : null}
+                  {order.status === 'delivered' ? <span className="text-green-700 font-semibold">Livrée</span> : null}
                 </div>
                 {order.notes && (
                   <p className="text-xs text-gray-400 italic">{order.notes}</p>
                 )}
+                {attachmentUrls.length > 0 ? (
+                  <div className="text-xs text-gray-500">
+                    Documents ({attachmentUrls.length}) :
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {attachmentUrls.map((url, idx) => {
+                        const publicUrl = supabase.storage.from('project-media').getPublicUrl(url).data.publicUrl;
+                        return (
+                          <a key={`${order.id}-${idx}`} href={publicUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                            Fichier {idx + 1}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 {transitions.length > 0 && (
                   <div className="flex gap-2 pt-1">
                     {transitions.map((next: string) => (

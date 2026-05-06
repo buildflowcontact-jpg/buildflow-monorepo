@@ -277,7 +277,7 @@ function App() {
                   className="surface-panel p-5 md:p-6"
                 >
                   <Suspense fallback={<SectionLoader label="Chargement de l'equipe..." />}>
-                    <Equipe />
+                    <Equipe projectId={resolvedProjectId} projectName={selectedProject?.name ?? 'Projet actif'} />
                   </Suspense>
                 </motion.section>
                 )} />

@@ -122,10 +122,20 @@ export function useCreateDelivery(projectId: string) {
         .select()
         .single();
       if (error) throw error;
+
+      // Une livraison reliée à une commande fait évoluer la commande vers "delivered".
+      if (order_id) {
+        await supabase
+          .from('purchase_orders')
+          .update({ status: 'delivered' })
+          .eq('id', order_id);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
     },
   });
 }

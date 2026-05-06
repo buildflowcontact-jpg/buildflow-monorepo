@@ -3,6 +3,8 @@ import { useDeliveries, useCreateDelivery } from '../hooks/useProcurement';
 import type { DeliveryRow } from '../hooks/useProcurement';
 import { useSuppliers } from '../hooks/useSuppliers';
 import { usePurchaseOrders } from '../hooks/useProcurement';
+import { uploadAttachmentToSupabase } from '../services/uploadAttachmentToSupabase';
+import { supabase } from '@/lib/supabase';
 
 const DELIVERY_STATUS: Record<string, { label: string; className: string }> = {
   received: { label: 'Reçu', className: 'bg-green-100 text-green-700' },
@@ -26,17 +28,86 @@ export function DeliveryTracker({ projectId }: Props) {
     delivered_at: new Date().toISOString().slice(0, 10),
     notes: '',
   });
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [existingDeliveryDocs, setExistingDeliveryDocs] = useState<Record<string, string[]>>({});
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function loadDeliveryDocs() {
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('id, title, category')
+        .eq('project_id', projectId)
+        .eq('category', 'delivery_attachment');
+
+      if (!docs || docs.length === 0) {
+        if (mounted) setExistingDeliveryDocs({});
+        return;
+      }
+
+      const { data: versions } = await supabase
+        .from('document_versions')
+        .select('document_id, file_url');
+
+      const byDocId = new Map<string, string[]>();
+      (versions || []).forEach((version) => {
+        const urls = byDocId.get(version.document_id) ?? [];
+        urls.push(version.file_url);
+        byDocId.set(version.document_id, urls);
+      });
+
+      const byDeliveryId: Record<string, string[]> = {};
+      docs.forEach((doc) => {
+        const deliveryId = doc.title.split('::')[0]?.replace('DEL-', '').trim();
+        if (!deliveryId) return;
+        byDeliveryId[deliveryId] = [...(byDeliveryId[deliveryId] ?? []), ...(byDocId.get(doc.id) ?? [])];
+      });
+
+      if (mounted) setExistingDeliveryDocs(byDeliveryId);
+    }
+
+    loadDeliveryDocs();
+    return () => {
+      mounted = false;
+    };
+  }, [deliveries, projectId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.delivered_at) return;
-    await createDelivery.mutateAsync({
+    const createdDelivery = await createDelivery.mutateAsync({
       order_id: form.order_id || null,
       supplier_id: form.supplier_id || null,
       delivered_at: form.delivered_at,
       notes: form.notes.trim() || null,
     });
+
+    if (attachments.length > 0) {
+      for (const file of attachments) {
+        const path = await uploadAttachmentToSupabase(file, projectId, 'delivery');
+        const { data: doc, error: docError } = await supabase
+          .from('documents')
+          .insert({
+            project_id: projectId,
+            title: `DEL-${createdDelivery.id} :: ${file.name}`,
+            category: 'delivery_attachment',
+          })
+          .select('id')
+          .single();
+        if (docError || !doc) continue;
+
+        await supabase.from('document_versions').insert({
+          document_id: doc.id,
+          file_url: path,
+          is_bpe: false,
+          version_label: 'v1',
+        });
+      }
+    }
+
     setForm({ order_id: '', supplier_id: '', delivered_at: new Date().toISOString().slice(0, 10), notes: '' });
+    setAttachments([]);
     setShowForm(false);
   };
 
@@ -105,6 +176,18 @@ export function DeliveryTracker({ projectId }: Props) {
               rows={2}
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Documents livraison</label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => setAttachments(Array.from(e.target.files ?? []))}
+              className="w-full border rounded px-2 py-1 text-sm"
+            />
+            {attachments.length > 0 ? (
+              <p className="text-xs text-gray-500 mt-1">{attachments.length} document(s) prêt(s) à l'envoi</p>
+            ) : null}
+          </div>
           <div className="flex gap-2">
             <button
               type="submit"
@@ -132,6 +215,9 @@ export function DeliveryTracker({ projectId }: Props) {
             const supplierName = suppliers.find((s) => s.id === d.supplier_id)?.name;
             const orderRef = orders.find((o) => o.id === d.order_id)?.reference;
             const statusInfo = DELIVERY_STATUS[d.status ?? ''] ?? { label: d.status, className: 'bg-gray-100 text-gray-600' };
+            const attachmentUrls = existingDeliveryDocs[d.id] ?? [];
+            const linkedOrder = orders.find((o) => o.id === d.order_id);
+            const isLate = Boolean(linkedOrder?.expected_delivery_at && new Date(d.delivered_at) > new Date(linkedOrder.expected_delivery_at));
 
             return (
               <div key={d.id} className="py-2 space-y-0.5">
@@ -145,7 +231,23 @@ export function DeliveryTracker({ projectId }: Props) {
                   </span>
                 </div>
                 {orderRef && <p className="text-xs text-gray-400">Commande : {orderRef}</p>}
+                {isLate ? <p className="text-xs text-red-600">Livraison enregistrée en retard</p> : null}
                 {d.notes && <p className="text-xs text-gray-400 italic">{d.notes}</p>}
+                {attachmentUrls.length > 0 ? (
+                  <div className="text-xs text-gray-500">
+                    Documents ({attachmentUrls.length}) :
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {attachmentUrls.map((url, idx) => {
+                        const publicUrl = supabase.storage.from('project-media').getPublicUrl(url).data.publicUrl;
+                        return (
+                          <a key={`${d.id}-${idx}`} href={publicUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                            Fichier {idx + 1}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             );
           })
