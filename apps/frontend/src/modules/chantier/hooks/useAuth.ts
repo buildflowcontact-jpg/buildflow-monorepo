@@ -8,16 +8,29 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
     async function loadSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        // Token invalide ou absent — on purge la session corrompue
+        await supabase.auth.signOut();
+      }
       if (mounted) {
         setUser(session?.user ?? null);
         setLoading(false);
       }
     }
     loadSession();
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+        return;
+      }
+      if (mounted) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
     });
     return () => {
       mounted = false;
