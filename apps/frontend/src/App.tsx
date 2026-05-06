@@ -4,11 +4,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { useToast } from "./ui/ToastProvider";
-import { DocumentList } from "./modules/bureau-etudes/components/DocumentList";
 import { useAuth, signOut } from "./modules/chantier/hooks/useAuth";
-import { AuthForm } from "./components/ui/AuthForm";
 import { useRealtimeProjectEvents } from "./utils/useRealtimeProjectEvents";
-import { OnboardingTour } from "./components/ui/OnboardingTour";
+import { initSyncBridge } from "@/services/sync/syncBridge";
 import { Header } from "./components/layout/Header";
 import { Sidebar } from "./components/layout/Sidebar";
 import { MobileNav } from "./components/layout/MobileNav";
@@ -20,9 +18,15 @@ import { useUIStore } from "./store/uiStore";
 import { supabase } from "@/lib/supabase";
 import { Spinner } from "./ui/Spinner";
 import { t } from "./i18n";
-import { CreateProjectPanel } from "./components/shared/CreateProjectPanel";
+import { ProjectProvider } from "./app/providers/ProjectProvider";
+import { PermissionProvider } from "./app/providers/PermissionProvider";
+import { AppContextProvider } from "./app/providers/AppContext";
 
+const AuthForm = React.lazy(() => import("./components/ui/AuthForm").then((module) => ({ default: module.AuthForm })));
+const OnboardingTour = React.lazy(() => import("./components/ui/OnboardingTour").then((module) => ({ default: module.OnboardingTour })));
+const ConflictModal = React.lazy(() => import("./components/ui/ConflictModal").then((module) => ({ default: module.ConflictModal })));
 const QuickActionPro = React.lazy(() => import("./QuickActionPro"));
+const DocumentList = React.lazy(() => import("./modules/bureau-etudes/components/DocumentList").then((module) => ({ default: module.DocumentList })));
 const EventList = React.lazy(() => import("./features/events/EventList").then((module) => ({ default: module.EventList })));
 const PlanViewer = React.lazy(() => import("./features/planviewer/PlanViewer").then((module) => ({ default: module.PlanViewer })));
 const Planifier = React.lazy(() => import("./features/planifier/Planifier").then((module) => ({ default: module.Planifier })));
@@ -37,6 +41,9 @@ const CommercialDashboard = React.lazy(() => import("./modules/commercial/compon
 const KPIDashboard = React.lazy(() => import("./modules/kpi/components/KPIDashboard").then((module) => ({ default: module.KPIDashboard })));
 const TimeTrackingDashboard = React.lazy(() => import("./modules/time-tracking/components/TimeTrackingDashboard").then((module) => ({ default: module.TimeTrackingDashboard })));
 const AccountSettings = React.lazy(() => import("./modules/settings/components/AccountSettings").then((module) => ({ default: module.AccountSettings })));
+const TerrainPage = React.lazy(() => import("./modules/terrain/pages/TerrainPage").then((module) => ({ default: module.TerrainPage })));
+const AuditTrailPage = React.lazy(() => import("./modules/audit/pages/AuditTrailPage").then((module) => ({ default: module.AuditTrailPage })));
+const CreateProjectPanel = React.lazy(() => import("./components/shared/CreateProjectPanel").then((module) => ({ default: module.CreateProjectPanel })));
 
 function SectionLoader({ label = "Chargement du module..." }: { label?: string }) {
   return (
@@ -56,6 +63,7 @@ function App() {
   const { data: projects = [], isLoading: isProjectsLoading } = useProjects();
   const resolvedProjectId = currentProjectId ?? projects[0]?.id ?? null;
   const selectedProject = projects.find((project) => project.id === resolvedProjectId) ?? projects[0] ?? null;
+  const userId = user?.id;
 
   // Gestion automatique du token Supabase dans l’URL (lien magique)
   useEffect(() => {
@@ -119,6 +127,12 @@ function App() {
   useRealtimeProjectEvents({ projectId: user ? resolvedProjectId : null, onEvent: handleRealtimeEvent });
   useSyncUITheme(user);
 
+  // Initialisation du SyncBridge : offline sync + Supabase Realtime (une seule fois)
+  useEffect(() => {
+    const cleanup = initSyncBridge();
+    return cleanup;
+  }, []);
+
   if (loading) {
     return (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -142,7 +156,9 @@ function App() {
           <img src="/logo.png" alt="BuildFlow" className="w-24 h-24 object-contain mb-5" />
           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 text-center mb-2">{t('welcomeTitle')}</h1>
           <p className="mb-6 text-slate-600 text-center max-w-lg">{t('welcomeSubtitle')}</p>
-          <AuthForm />
+          <Suspense fallback={<SectionLoader label="Chargement de l'authentification..." />}>
+            <AuthForm />
+          </Suspense>
           <p className="mt-7 text-xs text-slate-500">© {new Date().getFullYear()} BuildFlow</p>
         </div>
       </div>
@@ -160,9 +176,19 @@ function App() {
   }));
 
   return (
+    <ProjectProvider>
+      <PermissionProvider userId={userId}>
+        <AppContextProvider user={user}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="app-shell min-h-screen">
-        {showOnboarding && <OnboardingTour onClose={handleCloseOnboarding} />}
+        {showOnboarding ? (
+          <Suspense fallback={null}>
+            <OnboardingTour onClose={handleCloseOnboarding} />
+          </Suspense>
+        ) : null}
+        <Suspense fallback={null}>
+          <ConflictModal />
+        </Suspense>
 
         <Header
           userRole={userRole}
@@ -189,7 +215,9 @@ function App() {
             ) : null}
 
             {!isProjectsLoading && !resolvedProjectId ? (
-              <CreateProjectPanel onCreated={setCurrentProjectId} />
+              <Suspense fallback={<SectionLoader label="Chargement de la création de projet..." />}>
+                <CreateProjectPanel onCreated={setCurrentProjectId} />
+              </Suspense>
             ) : null}
 
             {!isProjectsLoading && resolvedProjectId ? (
@@ -212,7 +240,9 @@ function App() {
 
                   <div className="surface-panel p-5 md:p-6">
                     <h3 className="font-black text-slate-900 mb-3">Documents du projet</h3>
-                    <DocumentList projectId={resolvedProjectId} onSelect={setActiveDocumentId} />
+                    <Suspense fallback={<SectionLoader label="Chargement des documents..." />}>
+                      <DocumentList projectId={resolvedProjectId} onSelect={setActiveDocumentId} />
+                    </Suspense>
                   </div>
 
                   {activeDocumentId && (
@@ -408,6 +438,26 @@ function App() {
                 </motion.section>
                 )} />
 
+                <Route path="/terrain" element={(
+                  <Suspense fallback={<div className="fixed inset-0 bg-neutral-950 flex items-center justify-center text-white text-sm">Chargement…</div>}>
+                    <TerrainPage projectId={resolvedProjectId} />
+                  </Suspense>
+                )} />
+
+                <Route path="/audit" element={(
+                <motion.section
+                  key="audit"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <Suspense fallback={<SectionLoader label="Chargement audit trail..." />}>
+                    <AuditTrailPage projectId={resolvedProjectId} />
+                  </Suspense>
+                </motion.section>
+                )} />
+
                 <Route path="*" element={<Navigate to="/executer" replace />} />
               </Routes>
             </AnimatePresence>
@@ -418,6 +468,9 @@ function App() {
         <MobileNav />
       </div>
     </ThemeProvider>
+        </AppContextProvider>
+      </PermissionProvider>
+    </ProjectProvider>
   );
 }
 

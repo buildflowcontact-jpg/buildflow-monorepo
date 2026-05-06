@@ -1,3 +1,4 @@
-// types/index.ts
+// types/index.ts — barrel d'exports de tous les types de l'application
 export * from './database.types';
-// Ajouter d'autres types globaux ici si besoin
+export * from './db';
+export * from './incident';

@@ -1,7 +1,9 @@
 import React from 'react';
+import { ProjectSwitcher } from '../shared/ProjectSwitcher';
 import { SearchGlobal } from '../shared/SearchGlobal';
 import { NotificationBell } from '../../modules/notifications/components/NotificationBell';
 import { ThemePicker } from './ThemePicker';
+import { OfflineBadge } from '../ui/OfflineBadge';
 
 interface HeaderProps {
   userRole: string;
@@ -24,7 +26,9 @@ export function Header({ userRole, email, onSignOut, statusLabel, projectId }: H
         </div>
 
         <div className="hidden md:flex items-center gap-2 text-xs">
+          <ProjectSwitcher />
           <SearchGlobal />
+          <OfflineBadge />
           <NotificationBell projectId={projectId} />
           <ThemePicker />
           <span className="bf-badge bf-badge-status px-2 py-1 rounded-full font-semibold">{statusLabel}</span>
@@ -41,7 +45,7 @@ export function Header({ userRole, email, onSignOut, statusLabel, projectId }: H
           onClick={onSignOut}
           className="bf-button-secondary rounded-xl px-3 py-2 text-sm font-semibold transition-colors"
         >
-          Deconnexion
+          Déconnexion
         </button>
       </div>
     </header>

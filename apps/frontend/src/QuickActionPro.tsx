@@ -6,6 +6,8 @@ import { supabase } from './lib/supabase';
 import { emit } from './lib/events';
 import { useToast } from './ui/ToastProvider';
 import { useOfflineQueue } from './hooks/useOfflineQueue';
+import { useOfflineStatus } from './hooks/useOfflineStatus';
+import { addToQueue } from './services/offline/queue';
 
 type QuickActionType = 'INCIDENT' | 'PHOTO' | 'TASK_DONE' | 'DELIVERY';
 
@@ -180,36 +182,25 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     await queryClient.invalidateQueries({ queryKey: ['project-events', effectiveProjectId] });
   }, [activeDocumentId, projectId, queryClient]);
 
-  const {
-    queue,
-    addToQueue,
-    processQueue,
-    isOnline,
-    isProcessing,
-  } = useOfflineQueue<OfflineQuickActionItem>({
-    storeName: 'quick-actions',
-    processItem: async (item) => {
-      await submitAction(
-        {
-          type: item.payload.type,
-          description: item.payload.description,
-          zone: item.payload.zone,
-          priority: item.payload.priority,
-          imageDataUrl: item.payload.imageDataUrl,
-        },
-        item.projectId,
-        item.activeDocumentId,
-      );
-    },
-  });
+  const { pendingCount, isSyncing: isProcessing, forceSync: processQueue } = useOfflineQueue();
+  const { isOnline } = useOfflineStatus();
+  const queue = { length: pendingCount };
+
+  const addToQueueLocal = async (item: OfflineQuickActionItem) => {
+    await addToQueue('incident_create', {
+      id: item.id,
+      project_id: item.projectId,
+      title: `[${item.payload.type}] ${item.payload.description}`,
+      description: item.payload.description,
+      severity: item.payload.priority === 'high' ? 'high' : item.payload.priority === 'low' ? 'low' : 'medium',
+      status: 'submitted',
+    });
+  };
 
   const queueLabel = useMemo(() => {
-    if (queue.length === 0) {
-      return null;
-    }
-
-    return `${queue.length} action${queue.length > 1 ? 's' : ''} en attente`;
-  }, [queue.length]);
+    if (pendingCount === 0) return null;
+    return `${pendingCount} action${pendingCount > 1 ? 's' : ''} en attente`;
+  }, [pendingCount]);
 
   // Vibration mobile
   const triggerHaptic = () => {
@@ -239,7 +230,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
 
       if (!isOnline) {
         const imageDataUrl = form.image ? await fileToDataUrl(form.image) : null;
-        await addToQueue({
+        await addToQueueLocal({
           id: crypto.randomUUID(),
           projectId,
           activeDocumentId,
@@ -296,7 +287,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
             {queueLabel ? <span className="rounded-full bg-slate-900 px-2.5 py-1 font-semibold text-white">{queueLabel}</span> : null}
           </div>
           {!isOnline ? <p className="mt-2 text-xs text-orange-700">Les actions sont stockees sur l appareil puis rejouees automatiquement a la reconnexion.</p> : null}
-          {isOnline && queue.length > 0 ? (
+          {isOnline && pendingCount > 0 ? (
             <button
               type="button"
               onClick={() => void processQueue()}

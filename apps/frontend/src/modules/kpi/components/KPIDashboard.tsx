@@ -1,12 +1,17 @@
 import React, { useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
+import { usePortfolioDashboard } from '../hooks/usePortfolioDashboard';
+import { useActivityTimeline } from '@/modules/audit/hooks/useActivityTimeline';
+import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
 
 interface KPIDashboardProps {
   projectId: string;
 }
 
 export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
+  const { data: portfolio } = usePortfolioDashboard();
+  const { data: portfolioActivity = [] } = useActivityTimeline(undefined, 12);
   const { data: project } = useQuery({
     queryKey: ['project-full', projectId],
     queryFn: async () => {
@@ -138,6 +143,81 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
 
   return (
     <div className="space-y-6">
+      {portfolio ? (
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+          <div className="bg-slate-900 text-white rounded-lg shadow p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-300">CA en cours</p>
+            <p className="mt-3 text-3xl font-black">€{(portfolio.revenueInFlight / 1000).toFixed(1)}k</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Marge estimée</p>
+            <p className="mt-3 text-3xl font-black text-emerald-600">€{(portfolio.estimatedMargin / 1000).toFixed(1)}k</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Projets en dérive</p>
+            <p className="mt-3 text-3xl font-black text-amber-600">{portfolio.delayedProjects}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Incidents critiques</p>
+            <p className="mt-3 text-3xl font-black text-red-600">{portfolio.criticalIncidents}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Charge équipes</p>
+            <p className="mt-3 text-3xl font-black text-blue-600">{portfolio.teamWorkload}h</p>
+          </div>
+        </div>
+      ) : null}
+
+      {portfolio?.projects?.length ? (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Portefeuille multi-projets</h2>
+              <p className="text-sm text-gray-600 mt-1">Vue direction consolidée des risques, budgets et incidents</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            {portfolio.projects.map((portfolioProject) => (
+              <div key={portfolioProject.id} className="rounded-2xl border border-slate-200 p-4 bg-gradient-to-br from-white to-slate-50">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">{portfolioProject.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{portfolioProject.code}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${portfolioProject.delayedLabel === 'critique' ? 'bg-red-100 text-red-700' : portfolioProject.delayedLabel === 'derive' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {portfolioProject.delayedLabel}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-500">Avancement</p>
+                    <p className="font-semibold text-slate-900">{portfolioProject.completionPct}%</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Budget</p>
+                    <p className="font-semibold text-slate-900">{portfolioProject.budgetRate}%</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Incidents</p>
+                    <p className="font-semibold text-slate-900">{portfolioProject.incidentCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Critiques ouverts</p>
+                    <p className="font-semibold text-red-600">{portfolioProject.openCriticalIncidents}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <ActivityTimeline
+        items={portfolioActivity}
+        title="Timeline portefeuille"
+        emptyLabel="Aucune activité consolidée pour le moment."
+      />
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <h1 className="text-3xl font-bold text-gray-900">Tableau de bord KPI</h1>

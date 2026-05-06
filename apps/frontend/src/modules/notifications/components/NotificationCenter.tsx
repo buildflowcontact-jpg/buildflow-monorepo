@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { useNotifications, useDeleteNotification, useClearAllNotifications } from '../hooks/useNotifications';
+import React from 'react';
+import {
+  useGroupedNotifications,
+  useDeleteNotification,
+  useClearAllNotifications,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+} from '../hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NotificationCenterProps {
@@ -8,38 +14,41 @@ interface NotificationCenterProps {
 }
 
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({ projectId, onClose }) => {
-  const { data: notifications = [], isLoading } = useNotifications(projectId);
+  const { data: notifications = [], groups, isLoading } = useGroupedNotifications(projectId);
   const deleteNotification = useDeleteNotification();
-
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
   const clearAll = useClearAllNotifications();
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-50 border-green-200 text-green-900';
-      case 'warning':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-900';
-      case 'error':
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical':
         return 'bg-red-50 border-red-200 text-red-900';
-      case 'info':
+      case 'high':
+        return 'bg-amber-50 border-amber-200 text-amber-900';
+      case 'low':
+        return 'bg-slate-50 border-slate-200 text-slate-900';
+      case 'medium':
       default:
         return 'bg-blue-50 border-blue-200 text-blue-900';
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return '✓';
-      case 'warning':
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case 'critical':
         return '⚠';
-      case 'error':
-        return '✕';
-      case 'info':
+      case 'high':
+        return '⬆';
+      case 'low':
+        return '…';
+      case 'medium':
       default:
         return 'ⓘ';
     }
   };
+
+  const orderedGroups = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
 
   return (
     <motion.div
@@ -73,6 +82,13 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ projectI
         {notifications.length > 0 && (
           <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex gap-2">
             <button
+              onClick={() => markAllRead.mutate(projectId)}
+              disabled={markAllRead.isPending}
+              className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+            >
+              Tout marquer lu
+            </button>
+            <button
               onClick={() => clearAll.mutate(projectId)}
               disabled={clearAll.isPending}
               className="text-xs px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50"
@@ -95,40 +111,67 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ projectI
             </div>
           ) : (
             <AnimatePresence>
-              {notifications.map((notification) => (
-                <motion.div
-                  key={notification.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.15 }}
-                  className={`border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors`}
-                >
-                  <div className={`p-3 rounded-lg border ${getTypeColor(notification.type)}`}>
-                    <div className="flex items-start gap-3">
-                      <div className="text-xl flex-shrink-0">{getTypeIcon(notification.type)}</div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm truncate capitalize">{notification.type}</h4>
-                        <p className="text-xs mt-1 opacity-90">Pour: {notification.target_role}</p>
-                        {notification.reference_id && (
-                          <p className="text-xs mt-1 opacity-75 text-gray-600">Ref: {notification.reference_id}</p>
-                        )}
-                        <p className="text-xs mt-2 opacity-60">
-                          {new Date(notification.created_at).toLocaleString('fr-FR')}
-                        </p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification.mutate(notification.id);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 flex-shrink-0"
-                      >
-                        ✕
-                      </button>
+              {orderedGroups.map((groupKey) => (
+                <div key={groupKey}>
+                  {(groups[groupKey] ?? []).length > 0 && (
+                    <div className="px-4 pt-4 pb-1 text-[11px] font-bold tracking-[0.18em] text-gray-500 uppercase">
+                      {groupKey}
                     </div>
-                  </div>
-                </motion.div>
+                  )}
+                  {(groups[groupKey] ?? []).map((notification) => (
+                    <motion.div
+                      key={notification.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.15 }}
+                      className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className={`p-3 rounded-lg border ${getPriorityColor(notification.priority)}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="text-xl flex-shrink-0">{getPriorityIcon(notification.priority)}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-sm truncate">{notification.title}</h4>
+                              {!notification.is_read && <span className="w-2 h-2 rounded-full bg-current opacity-70" />}
+                            </div>
+                            <p className="text-xs mt-1 opacity-90">Type: {notification.type}</p>
+                            {notification.target_role && (
+                              <p className="text-xs mt-1 opacity-90">Cible: {notification.target_role}</p>
+                            )}
+                            {notification.reference_id && (
+                              <p className="text-xs mt-1 opacity-75 text-gray-600">Ref: {notification.reference_id}</p>
+                            )}
+                            <p className="text-xs mt-2 opacity-60">
+                              {new Date(notification.created_at).toLocaleString('fr-FR')}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markRead.mutate({
+                                notificationId: notification.id,
+                                isRead: !Boolean(notification.is_read),
+                              });
+                            }}
+                            className="text-[11px] text-slate-500 hover:text-slate-800 flex-shrink-0"
+                          >
+                            {notification.is_read ? 'Marquer non lu' : 'Marquer lu'}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification.mutate(notification.id);
+                            }}
+                            className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               ))}
             </AnimatePresence>
           )}

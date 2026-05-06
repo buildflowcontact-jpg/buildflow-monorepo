@@ -10,6 +10,7 @@ function viewLinkClass(isActive: boolean) {
 export function MobileNav() {
   return (
     <nav className="bf-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 px-2 py-2 flex gap-1">
+      <NavLink to="/terrain" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🚨</NavLink>
       <NavLink to="/executer" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Executer</NavLink>
       <NavLink to="/planifier" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Planifier</NavLink>
       <NavLink to="/piloter" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Piloter</NavLink>
@@ -21,6 +22,7 @@ export function MobileNav() {
       <NavLink to="/kpi" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>KPI</NavLink>
       <NavLink to="/time-tracking" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Temps</NavLink>
       <NavLink to="/parametres" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Params</NavLink>
+      <NavLink to="/audit" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🔐</NavLink>
     </nav>
   );
 }

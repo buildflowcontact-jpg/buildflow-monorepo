@@ -2,9 +2,9 @@ name: CI/CD Frontend
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, main, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [master, main, develop]
 
 jobs:
   build-test-e2e:
@@ -55,31 +55,4 @@ jobs:
       - name: Run e2e tests
         run: npm run test:e2e
 
-  deploy:
-    needs: build-test-e2e
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    defaults:
-      run:
-        working-directory: apps/frontend
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Check bundle budgets
-        run: npm run check:bundle
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: apps/frontend
+  # Le déploiement est géré par l'intégration Git native Vercel.

@@ -10,6 +10,7 @@ function viewLinkClass(isActive: boolean) {
 export function Sidebar() {
   return (
     <nav className="hidden md:flex items-center gap-2 mb-6">
+      <NavLink to="/terrain" className={({ isActive }) => viewLinkClass(isActive)}>🚨 Terrain</NavLink>
       <NavLink to="/executer" className={({ isActive }) => viewLinkClass(isActive)}>Executer</NavLink>
       <NavLink to="/planifier" className={({ isActive }) => viewLinkClass(isActive)}>Planifier</NavLink>
       <NavLink to="/piloter" className={({ isActive }) => viewLinkClass(isActive)}>Piloter</NavLink>
@@ -21,6 +22,7 @@ export function Sidebar() {
       <NavLink to="/kpi" className={({ isActive }) => viewLinkClass(isActive)}>KPI</NavLink>
       <NavLink to="/time-tracking" className={({ isActive }) => viewLinkClass(isActive)}>Temps</NavLink>
       <NavLink to="/parametres" className={({ isActive }) => viewLinkClass(isActive)}>Parametres</NavLink>
+      <NavLink to="/audit" className={({ isActive }) => viewLinkClass(isActive)}>🔐 Audit</NavLink>
     </nav>
   );
 }

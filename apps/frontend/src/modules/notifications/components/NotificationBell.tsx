@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNotifications } from '../hooks/useNotifications';
+import { useNotifications, useSubscribeNotifications } from '../hooks/useNotifications';
 import { NotificationCenter } from './NotificationCenter';
 
 interface NotificationBellProps {
@@ -9,8 +9,11 @@ interface NotificationBellProps {
 export const NotificationBell: React.FC<NotificationBellProps> = ({ projectId }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { data: notifications = [] } = useNotifications(projectId);
-  
-  const notificationCount = notifications.length;
+  useSubscribeNotifications(projectId);
+
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length;
+  const criticalCount = notifications.filter((notification) => notification.priority === 'critical').length;
+  const notificationCount = unreadCount;
 
   return (
     <>
@@ -28,7 +31,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ projectId })
           />
         </svg>
         {notificationCount > 0 && (
-          <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+          <span className={`absolute top-0 right-0 w-5 h-5 text-white text-xs font-bold rounded-full flex items-center justify-center ${criticalCount > 0 ? 'bg-red-600' : 'bg-amber-500'}`}>
             {notificationCount > 9 ? '9+' : notificationCount}
           </span>
         )}
