@@ -18,6 +18,7 @@ export type IncidentStatus =
   | 'approved_for_pm'
   | 'in_progress'
   | 'resolved'
+  | 'closed'
   | 'rejected'
   | 'needs_more_info';
 
@@ -28,7 +29,8 @@ export type IncidentAction =
   | 'reject'
   | 'request_info'
   | 'start'
-  | 'resolve';
+  | 'resolve'
+  | 'close';
 
 // Payload de création
 export interface CreateIncidentPayload {

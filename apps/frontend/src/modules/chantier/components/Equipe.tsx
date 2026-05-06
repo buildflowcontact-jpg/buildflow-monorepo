@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/Spinner"
 import { useToast } from "@/ui/ToastProvider"
 import { supabase } from "@/lib/supabase"
-import { useWorkers, useCreateWorker } from "@/modules/rh-securite/hooks/useRHSecurity"
+import { useWorkers, useCreateWorker, useUpdateWorker, useDeleteWorker } from "@/modules/rh-securite/hooks/useRHSecurity"
+import { usePermissions } from "@/hooks/usePermissions"
 
 const memberSchema = z.object({
   firstName: z.string().min(2, "Prénom requis"),
@@ -21,12 +22,20 @@ export interface EquipeProps {
 }
 
 export function Equipe({ projectId, projectName }: EquipeProps) {
+  const [isAddFormOpen, setIsAddFormOpen] = React.useState(false)
+  const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [editValues, setEditValues] = React.useState<{ fullName: string; company: string; role: string }>({ fullName: '', company: '', role: '' })
   const form = useZodForm(memberSchema, {
     defaultValues: { firstName: "", lastName: "", company: "", domain: "" }
   })
   const { data: membres = [], isLoading } = useWorkers(projectId)
   const createWorker = useCreateWorker()
+  const updateWorker = useUpdateWorker()
+  const deleteWorker = useDeleteWorker()
   const { showToast } = useToast() || {}
+  const { can } = usePermissions(projectId)
+  const canInvite = can('team:invite')
+  const canRemove = can('team:remove')
 
   const companyStats = React.useMemo(() => {
     const counts: Record<string, number> = {}
@@ -101,8 +110,22 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
 
   return (
     <div className="space-y-5">
-      <h3 className="bf-text-primary text-2xl font-black tracking-tight">Équipe</h3>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="Ajouter un membre">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="bf-text-primary text-2xl font-black tracking-tight">Équipe</h3>
+        {canInvite && (
+        <Button
+          type="button"
+          onClick={() => setIsAddFormOpen((open) => !open)}
+          aria-expanded={isAddFormOpen}
+          aria-controls="add-person-form"
+        >
+          {isAddFormOpen ? "Fermer" : "Ajouter une personne"}
+        </Button>
+        )}
+      </div>
+
+      {isAddFormOpen && canInvite ? (
+      <form id="add-person-form" onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="Ajouter un membre">
         <div className="w-full sm:max-w-sm">
           <label htmlFor="firstName" className="bf-text-primary block text-sm font-semibold">Prénom</label>
           <input
@@ -156,6 +179,7 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
           </Button>
         </div>
       </form>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="bf-card-soft p-4">
@@ -189,17 +213,100 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
         </div>
       </div>
 
-      <ul className="bf-card-soft divide-y divide-slate-200">
+      <div className="space-y-2">
+        <p className="text-sm font-semibold bf-text-primary">Liste des personnes liées au projet</p>
+        <ul className="bf-card-soft divide-y divide-slate-200">
         {isLoading ? (
           <li className="bf-text-muted px-4 py-3">Chargement...</li>
         ) : membres.length ? membres.map((m) => (
-          <li key={m.id} className="bf-text-primary px-4 py-3 font-medium">
-            <span>{m.full_name}</span>
-            {m.company ? <span className="text-xs bf-text-muted ml-2">({m.company})</span> : null}
-            {m.role ? <div className="text-xs bf-text-muted">{m.role}</div> : null}
+          <li key={m.id} className="px-4 py-3 space-y-1">
+            {editingId === m.id ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  aria-label="Nom complet"
+                  value={editValues.fullName}
+                  onChange={(e) => setEditValues({ ...editValues, fullName: e.target.value })}
+                  className="bf-input rounded-xl px-3 py-2 text-sm"
+                />
+                <input
+                  aria-label="Entreprise"
+                  value={editValues.company}
+                  onChange={(e) => setEditValues({ ...editValues, company: e.target.value })}
+                  className="bf-input rounded-xl px-3 py-2 text-sm"
+                />
+                <input
+                  aria-label="Rôle / domaine"
+                  value={editValues.role}
+                  onChange={(e) => setEditValues({ ...editValues, role: e.target.value })}
+                  className="bf-input rounded-xl px-3 py-2 text-sm"
+                />
+                <div className="sm:col-span-3 flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={updateWorker.isPending}
+                    onClick={async () => {
+                      try {
+                        await updateWorker.mutateAsync({ workerId: m.id, projectId, fullName: editValues.fullName, company: editValues.company, role: editValues.role })
+                        showToast?.('Membre mis à jour', 'success')
+                        setEditingId(null)
+                      } catch {
+                        showToast?.('Impossible de mettre à jour le membre', 'error')
+                      }
+                    }}
+                  >
+                    {updateWorker.isPending ? <Spinner size={14} /> : 'Enregistrer'}
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(null)}>Annuler</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="bf-text-primary font-medium">{m.full_name}</span>
+                  {m.company ? <span className="text-xs bf-text-muted ml-2">({m.company})</span> : null}
+                  {m.role ? <div className="text-xs bf-text-muted">{m.role}</div> : null}
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  {canInvite && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingId(m.id)
+                      setEditValues({ fullName: m.full_name ?? '', company: m.company ?? '', role: m.role ?? '' })
+                    }}
+                  >
+                    Modifier
+                  </Button>
+                  )}
+                  {canRemove && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={deleteWorker.isPending}
+                    onClick={async () => {
+                      if (!confirm(`Retirer ${m.full_name} du projet ?`)) return
+                      try {
+                        await deleteWorker.mutateAsync({ workerId: m.id, projectId })
+                        showToast?.(`${m.full_name} retiré du projet`, 'success')
+                      } catch {
+                        showToast?.('Impossible de supprimer ce membre', 'error')
+                      }
+                    }}
+                  >
+                    Retirer
+                  </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </li>
         )) : <li className="bf-text-muted px-4 py-3">Aucun membre</li>}
-      </ul>
+        </ul>
+      </div>
     </div>
   )
 }

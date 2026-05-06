@@ -24,6 +24,9 @@ const TRANSITIONS: TransitionMap = {
     resolve: 'resolved',
     reject:  'rejected',
   },
+  resolved: {
+    close: 'closed',
+  },
 };
 
 export function useIncidentWorkflow() {

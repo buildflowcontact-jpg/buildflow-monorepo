@@ -1,6 +1,5 @@
 // modules/incidents/pages/IncidentsPage.tsx
 import React, { useState } from 'react';
-import { useIncidents } from '../hooks/useIncidents';
 import { useIncidentsRealtime } from '../hooks/useIncidentsRealtime';
 import { usePermissions } from '@/hooks/usePermissions';
 import { IncidentInbox } from '../components/IncidentInbox';
@@ -11,34 +10,44 @@ interface IncidentsPageProps {
 }
 
 export const IncidentsPage: React.FC<IncidentsPageProps> = ({ projectId }) => {
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const { can } = usePermissions(projectId);
 
   // Active le realtime pour cette page
   useIncidentsRealtime(projectId);
 
   return (
-    <div className="max-w-3xl mx-auto py-6 px-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Incidents</h1>
-        {can('incidents:create') && (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="bf-text-primary text-2xl font-black tracking-tight">Incidents</h1>
+          <p className="bf-text-muted text-sm">Remonter, filtrer et escalader les incidents critiques du chantier.</p>
+        </div>
+        {can('incidents:create') ? (
           <button
-            onClick={() => setShowForm((v) => !v)}
+            onClick={() => setShowForm((value) => !value)}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
           >
-            {showForm ? 'Fermer' : '+ Signaler'}
+            {showForm ? 'Masquer formulaire' : 'Signaler un incident'}
           </button>
-        )}
+        ) : null}
       </div>
 
-      {showForm && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Nouvel incident</h2>
-          <IncidentForm projectId={projectId} onSuccess={() => setShowForm(false)} />
-        </div>
-      )}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <section className="xl:col-span-4 bf-card-soft p-4">
+          <h2 className="bf-text-primary font-black tracking-tight mb-3">Formulaire incident</h2>
+          {can('incidents:create') && showForm ? (
+            <IncidentForm projectId={projectId} onSuccess={() => setShowForm(false)} />
+          ) : (
+            <p className="text-sm bf-text-muted">Activez le formulaire pour créer un nouvel incident.</p>
+          )}
+        </section>
 
-      <IncidentInbox projectId={projectId} />
+        <section className="xl:col-span-8 bf-card-soft p-4">
+          <h2 className="bf-text-primary font-black tracking-tight mb-3">Liste des incidents</h2>
+          <IncidentInbox projectId={projectId} />
+        </section>
+      </div>
     </div>
   );
 };

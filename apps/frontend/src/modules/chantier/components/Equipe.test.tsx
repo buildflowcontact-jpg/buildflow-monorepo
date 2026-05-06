@@ -1,10 +1,16 @@
 import React from 'react';
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { Equipe } from "../components/Equipe"
+
+jest.mock('@/hooks/usePermissions', () => ({
+  usePermissions: () => ({ can: () => true, role: 'owner' }),
+}));
 
 jest.mock('@/modules/rh-securite/hooks/useRHSecurity', () => ({
   useWorkers: () => ({ data: [], isLoading: false }),
   useCreateWorker: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useUpdateWorker: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useDeleteWorker: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 jest.mock('@/ui/ToastProvider', () => ({
@@ -29,6 +35,11 @@ describe("Equipe", () => {
   it("affiche le formulaire d'invitation et de création d'équipe", async () => {
     render(<Equipe projectId="project-1" projectName="Projet Démo" />)
     expect(screen.getByText(/Équipe/)).toBeInTheDocument()
+    expect(screen.getByText(/Liste des personnes liées au projet/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ajouter une personne/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Ajouter une personne/i }))
+
     expect(screen.getByLabelText(/Prénom/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Nom/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Entreprise/)).toBeInTheDocument()

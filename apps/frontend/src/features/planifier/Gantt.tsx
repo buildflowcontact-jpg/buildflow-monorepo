@@ -8,41 +8,79 @@ const taskSchema = z.object({
   name: z.string().min(2, "Nom requis"),
   start: z.string().min(1, "Date de début requise"),
   end: z.string().min(1, "Date de fin requise"),
-  primaryDependencyId: z.string().optional(),
-  subDependencyId: z.string().optional(),
+  assigneesInput: z.string().min(1, "Ajoutez au moins une personne"),
 })
 type TaskForm = z.infer<typeof taskSchema>
 
-const initialTasks = [
-  { id: 1, name: 'Terrassement', start: '2026-05-01', end: '2026-05-05', dependencies: [] },
-  { id: 2, name: 'Fondations', start: '2026-05-06', end: '2026-05-10', dependencies: [1] },
-  { id: 3, name: 'Élévation', start: '2026-05-11', end: '2026-05-20', dependencies: [2] },
-  { id: 4, name: 'Toiture', start: '2026-05-21', end: '2026-05-25', dependencies: [3] },
+type TaskNode = {
+  id: number
+  name: string
+  start: string
+  end: string
+  assignees: string[]
+  children: TaskNode[]
+}
+
+export type GanttMode = "normal" | "simplifie"
+
+const initialTasks: TaskNode[] = [
+  {
+    id: 1,
+    name: "Terrassement",
+    start: "2026-05-01",
+    end: "2026-05-05",
+    assignees: ["Ahmed", "Lina"],
+    children: [
+      {
+        id: 2,
+        name: "Piquetage",
+        start: "2026-05-01",
+        end: "2026-05-02",
+        assignees: ["Ahmed"],
+        children: [],
+      },
+    ],
+  },
 ]
 
-export function Gantt() {
-  const [tasks, setTasks] = useState(initialTasks)
+function flattenTree(nodes: TaskNode[], depth = 0): Array<TaskNode & { depth: number }> {
+  return nodes.flatMap((node) => [
+    { ...node, depth },
+    ...flattenTree(node.children, depth + 1),
+  ])
+}
+
+function insertChild(nodes: TaskNode[], parentId: number, child: TaskNode): TaskNode[] {
+  return nodes.map((node) => {
+    if (node.id === parentId) {
+      return { ...node, children: [...node.children, child] }
+    }
+    return { ...node, children: insertChild(node.children, parentId, child) }
+  })
+}
+
+function dayDiff(from: Date, to: Date): number {
+  const ms = to.getTime() - from.getTime()
+  return Math.max(Math.ceil(ms / (1000 * 60 * 60 * 24)), 0)
+}
+
+export function Gantt({ mode = "normal" }: { mode?: GanttMode }) {
+  const [tasks, setTasks] = useState<TaskNode[]>(initialTasks)
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
+  const [parentForNewTask, setParentForNewTask] = useState<number | null>(null)
   const form = useZodForm(taskSchema, {
-    defaultValues: { name: "", start: "", end: "", primaryDependencyId: "", subDependencyId: "" }
+    defaultValues: { name: "", start: "", end: "", assigneesInput: "" }
   })
 
-  const primaryDependencyId = form.watch('primaryDependencyId')
-
-  const subDependencyOptions = useMemo(() => {
-    const parentTask = tasks.find((task) => String(task.id) === primaryDependencyId)
-    if (!parentTask) return []
-    return parentTask.dependencies
-      .map((depId: number) => tasks.find((task) => task.id === depId))
-      .filter((task): task is typeof tasks[number] => Boolean(task))
-  }, [primaryDependencyId, tasks])
+  const flatTasks = useMemo(() => flattenTree(tasks), [tasks])
 
   const chartData = useMemo(() => {
     const today = new Date()
-    const total = tasks.length || 1
-    const done = tasks.filter((task) => new Date(task.end) < today).length
-    const inProgress = tasks.filter((task) => new Date(task.start) <= today && new Date(task.end) >= today).length
-    const upcoming = Math.max(tasks.length - done - inProgress, 0)
-    const maxDependencies = Math.max(...tasks.map((task) => task.dependencies.length), 1)
+    const total = flatTasks.length || 1
+    const done = flatTasks.filter((task) => new Date(task.end) < today).length
+    const inProgress = flatTasks.filter((task) => new Date(task.start) <= today && new Date(task.end) >= today).length
+    const upcoming = Math.max(flatTasks.length - done - inProgress, 0)
+    const maxChildren = Math.max(...flatTasks.map((task) => task.children.length), 1)
 
     return {
       done,
@@ -51,31 +89,98 @@ export function Gantt() {
       donePct: Math.round((done / total) * 100),
       inProgressPct: Math.round((inProgress / total) * 100),
       upcomingPct: Math.round((upcoming / total) * 100),
-      maxDependencies,
+      maxChildren,
     }
-  }, [tasks])
+  }, [flatTasks])
+
+  const selectedTask = flatTasks.find((task) => task.id === selectedTaskId) ?? null
+
+  const simplifiedTimeline = useMemo(() => {
+    if (flatTasks.length === 0) return []
+
+    const starts = flatTasks.map((task) => new Date(task.start))
+    const ends = flatTasks.map((task) => new Date(task.end))
+    const minStart = new Date(Math.min(...starts.map((d) => d.getTime())))
+    const maxEnd = new Date(Math.max(...ends.map((d) => d.getTime())))
+    const totalSpan = Math.max(dayDiff(minStart, maxEnd), 1)
+
+    return flatTasks.map((task) => {
+      const start = new Date(task.start)
+      const end = new Date(task.end)
+      const offsetPct = Math.round((dayDiff(minStart, start) / totalSpan) * 100)
+      const widthPct = Math.max(Math.round((Math.max(dayDiff(start, end), 1) / totalSpan) * 100), 4)
+      return {
+        ...task,
+        offsetPct,
+        widthPct,
+      }
+    })
+  }, [flatTasks])
 
   const onSubmit = (values: TaskForm) => {
-    const dependencies: number[] = []
-    if (values.primaryDependencyId) dependencies.push(Number(values.primaryDependencyId))
-    if (values.subDependencyId) dependencies.push(Number(values.subDependencyId))
+    const assignees = values.assigneesInput
+      .split(",")
+      .map((person) => person.trim())
+      .filter(Boolean)
 
-    setTasks([
-      ...tasks,
-      {
-        id: Date.now(),
-        name: values.name,
-        start: values.start,
-        end: values.end,
-        dependencies,
-      }
-    ])
+    if (assignees.length === 0) return
+
+    const newNode: TaskNode = {
+      id: Date.now(),
+      name: values.name,
+      start: values.start,
+      end: values.end,
+      assignees,
+      children: [],
+    }
+
+    if (parentForNewTask === null) {
+      setTasks((prev) => [...prev, newNode])
+    } else {
+      setTasks((prev) => insertChild(prev, parentForNewTask, newNode))
+    }
+
+    setParentForNewTask(null)
+    form.reset()
+  }
+
+  const startRootTaskCreation = () => {
+    setParentForNewTask(null)
+    form.reset()
+  }
+
+  const startSubTaskCreation = (taskId: number) => {
+    setSelectedTaskId(taskId)
+    setParentForNewTask(taskId)
     form.reset()
   }
 
   return (
     <div className="space-y-4">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap gap-2 items-end" aria-label="Ajouter une tâche">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm bf-text-muted">Cliquez sur une tâche pour préparer une sous-tâche.</p>
+        <Button type="button" onClick={startRootTaskCreation}>Ajouter une tâche</Button>
+      </div>
+
+      {selectedTask ? (
+        <div className="bf-card-soft p-3 text-xs">
+          <span className="font-semibold">Tâche sélectionnée :</span> {selectedTask.name}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="ml-3"
+            onClick={() => startSubTaskCreation(selectedTask.id)}
+          >
+            Ajouter une sous-tâche
+          </Button>
+        </div>
+      ) : null}
+
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap gap-2 items-end" aria-label="Ajouter une tâche ou sous-tâche">
+        <div className="w-full text-xs bf-text-muted">
+          {parentForNewTask === null ? "Création : tâche racine" : `Création : sous-tâche de l'élément ${parentForNewTask}`}
+        </div>
         <div>
           <label htmlFor="name" className="bf-text-primary block text-sm font-medium">Nom</label>
           <input id="name" type="text" {...form.register("name")} className="bf-input mt-1 block w-full rounded-xl" required />
@@ -92,34 +197,23 @@ export function Gantt() {
           {form.formState.errors.end && <p className="text-red-600 text-xs mt-1">{form.formState.errors.end.message}</p>}
         </div>
         <div>
-          <label htmlFor="dependencies" className="bf-text-primary block text-sm font-medium">Dépendances</label>
-          <select id="dependencies" {...form.register("primaryDependencyId")}
-            className="bf-select mt-1 block w-full rounded-xl">
-            <option value="">Aucune dépendance</option>
-            {tasks.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="sub-dependencies" className="bf-text-primary block text-sm font-medium">Sous-dépendance</label>
-          <select
-            id="sub-dependencies"
-            {...form.register("subDependencyId")}
-            className="bf-select mt-1 block w-full rounded-xl"
-            disabled={!primaryDependencyId || subDependencyOptions.length === 0}
-          >
-            <option value="">Aucune sous-dépendance</option>
-            {subDependencyOptions.map((task) => (
-              <option key={task.id} value={task.id}>{task.name}</option>
-            ))}
-          </select>
+          <label htmlFor="assigneesInput" className="bf-text-primary block text-sm font-medium">Personnes assignées</label>
+          <input
+            id="assigneesInput"
+            type="text"
+            {...form.register("assigneesInput")}
+            className="bf-input mt-1 block w-full rounded-xl"
+            placeholder="Ex: Ahmed, Lina, Marc"
+            required
+          />
+          {form.formState.errors.assigneesInput && <p className="text-red-600 text-xs mt-1">{form.formState.errors.assigneesInput.message}</p>}
         </div>
         <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? <Spinner size={16} /> : "Ajouter"}
+          {form.formState.isSubmitting ? <Spinner size={16} /> : parentForNewTask === null ? "Ajouter la tâche" : "Ajouter la sous-tâche"}
         </Button>
       </form>
 
+      {mode === "normal" ? (
       <div className="grid gap-3 md:grid-cols-3">
         <div className="bf-card-soft p-3">
           <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Avancement global</p>
@@ -142,13 +236,13 @@ export function Gantt() {
         </div>
 
         <div className="bf-card-soft p-3">
-          <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Intensité des dépendances</p>
+          <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Intensité des sous-tâches</p>
           <div className="space-y-1">
-            {tasks.slice(0, 5).map((task) => {
-              const pct = Math.round((task.dependencies.length / chartData.maxDependencies) * 100)
+            {flatTasks.slice(0, 5).map((task) => {
+              const pct = Math.round((task.children.length / chartData.maxChildren) * 100)
               return (
                 <div key={task.id}>
-                  <div className="flex items-center justify-between text-xs"><span className="truncate max-w-[150px]">{task.name}</span><span>{task.dependencies.length}</span></div>
+                  <div className="flex items-center justify-between text-xs"><span className="truncate max-w-[150px]">{task.name}</span><span>{task.children.length}</span></div>
                   <div className="h-1.5 rounded bg-slate-100 overflow-hidden"><div className="h-full bg-indigo-500" style={{ width: `${pct}%` }} /></div>
                 </div>
               )
@@ -156,29 +250,73 @@ export function Gantt() {
           </div>
         </div>
       </div>
+      ) : null}
 
+      {mode === "normal" ? (
       <div className="overflow-x-auto">
         <table className="bf-table min-w-full text-xs bf-text-primary">
           <thead>
             <tr>
               <th className="p-2">Tâche</th>
+              <th className="p-2">Niveau</th>
               <th className="p-2">Début</th>
               <th className="p-2">Fin</th>
-              <th className="p-2">Dépendances</th>
+              <th className="p-2">Assignés</th>
+              <th className="p-2">Action</th>
             </tr>
           </thead>
           <tbody>
-            {tasks.map(task => (
-              <tr key={task.id} className="bf-table-row">
-                <td className="p-2 font-bold">{task.name}</td>
+            {flatTasks.map(task => (
+              <tr
+                key={task.id}
+                className={`bf-table-row cursor-pointer ${selectedTaskId === task.id ? "bg-blue-50" : ""}`}
+                onClick={() => setSelectedTaskId(task.id)}
+              >
+                <td className="p-2 font-bold" style={{ paddingLeft: `${task.depth * 16 + 8}px` }}>
+                  {task.depth > 0 ? "↳ " : ""}{task.name}
+                </td>
+                <td className="p-2">{task.depth}</td>
                 <td className="p-2">{task.start}</td>
                 <td className="p-2">{task.end}</td>
-                <td className="p-2">{task.dependencies.map((dep: number) => tasks.find(t => t.id === dep)?.name).filter(Boolean).join(' > ')}</td>
+                <td className="p-2">{task.assignees.join(", ")}</td>
+                <td className="p-2">
+                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); startSubTaskCreation(task.id) }}>
+                    + Sous-tâche
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      ) : (
+      <div className="bf-card-soft p-4 space-y-3">
+        <p className="text-xs uppercase font-semibold bf-text-muted">Diagramme de Gantt simplifié</p>
+        <div className="space-y-2">
+          {simplifiedTimeline.map((task) => (
+            <div key={task.id} className="grid grid-cols-[200px_1fr] gap-3 items-center">
+              <button
+                type="button"
+                className="text-left text-xs font-semibold truncate"
+                onClick={() => setSelectedTaskId(task.id)}
+                title={task.name}
+              >
+                {task.depth > 0 ? "↳ " : ""}{task.name}
+              </button>
+              <div className="relative h-6 rounded bg-slate-100 overflow-hidden">
+                <div
+                  className="absolute top-1 h-4 rounded bg-blue-500 text-white text-[10px] px-1 flex items-center"
+                  style={{ left: `${task.offsetPct}%`, width: `${task.widthPct}%` }}
+                  title={`${task.start} -> ${task.end}`}
+                >
+                  {task.assignees.length > 1 ? `${task.assignees.length} pers.` : task.assignees[0]}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      )}
     </div>
   )
 }

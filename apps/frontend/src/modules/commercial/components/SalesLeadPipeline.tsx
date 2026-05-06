@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSalesLeads, useCreateSalesLead, useUpdateSalesLead, useDeleteSalesLead, useClients } from '../hooks/useCommercial';
 import { useToast } from '@/ui/ToastProvider';
+import { useCreateProject } from '@/hooks/useCreateProject';
 
 interface SalesLeadPipelineProps {
   projectId: string;
@@ -14,6 +15,7 @@ export const SalesLeadPipeline: React.FC<SalesLeadPipelineProps> = ({ projectId 
   const createLead = useCreateSalesLead();
   const updateLead = useUpdateSalesLead();
   const deleteLead = useDeleteSalesLead();
+  const createProject = useCreateProject();
   const { showToast } = useToast() || {};
 
   const [formData, setFormData] = useState({
@@ -96,6 +98,24 @@ export const SalesLeadPipeline: React.FC<SalesLeadPipelineProps> = ({ projectId 
       status: lead.status || 'new',
       valueHt: lead.value_ht != null ? String(lead.value_ht) : '',
     });
+  };
+
+  const handleConvertToProject = async (leadId: string) => {
+    const lead = leads?.find((l) => l.id === leadId);
+    if (!lead) return;
+    const client = clients?.find((c) => c.id === lead.client_id);
+    const projectName = client?.name
+      ? `Projet ${client.name}`
+      : lead.description
+      ? `Projet ${lead.description.slice(0, 40)}`
+      : `Projet lead ${leadId.slice(0, 8)}`;
+    const code = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20);
+    try {
+      await createProject.mutateAsync({ name: projectName, code });
+      showToast?.(`Projet "${projectName}" créé`, 'success');
+    } catch {
+      showToast?.('Impossible de créer le projet', 'error');
+    }
   };
 
   const pipelineStats = useMemo(() => {
@@ -269,6 +289,15 @@ export const SalesLeadPipeline: React.FC<SalesLeadPipelineProps> = ({ projectId 
                         >
                           Supprimer
                         </button>
+                        {status === 'won' && (
+                          <button
+                            onClick={() => handleConvertToProject(lead.id)}
+                            disabled={createProject.isPending}
+                            className="col-span-2 w-full px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100 disabled:opacity-50 font-semibold"
+                          >
+                            Convertir en projet
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

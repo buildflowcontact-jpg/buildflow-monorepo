@@ -111,3 +111,18 @@ export async function mockAllNoAuth(page: Page) {
   await mockProjects(page);
   await mockDocuments(page);
 }
+
+/**
+ * Mock générique qui renvoie un tableau vide pour toutes les tables Supabase REST.
+ * Utile pour tester l'état "vide" d'un module sans données.
+ */
+export async function mockSupabaseEmpty(page: Page) {
+  await mockProjects(page);
+  await page.route('**/rest/v1/**', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    })
+  );
+}

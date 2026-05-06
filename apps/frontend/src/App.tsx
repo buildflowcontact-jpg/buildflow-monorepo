@@ -23,17 +23,16 @@ import { PermissionProvider } from "./app/providers/PermissionProvider";
 import { AppContextProvider } from "./app/providers/AppContext";
 
 const AuthForm = React.lazy(() => import("./components/ui/AuthForm").then((module) => ({ default: module.AuthForm })));
+const GlobalDashboard = React.lazy(() => import("./features/dashboard/GlobalDashboard").then((module) => ({ default: module.GlobalDashboard })));
 const OnboardingTour = React.lazy(() => import("./components/ui/OnboardingTour").then((module) => ({ default: module.OnboardingTour })));
 const ConflictModal = React.lazy(() => import("./components/ui/ConflictModal").then((module) => ({ default: module.ConflictModal })));
-const QuickActionPro = React.lazy(() => import("./QuickActionPro"));
-const DocumentList = React.lazy(() => import("./modules/bureau-etudes/components/DocumentList").then((module) => ({ default: module.DocumentList })));
-const EventList = React.lazy(() => import("./features/events/EventList").then((module) => ({ default: module.EventList })));
-const PlanViewer = React.lazy(() => import("./features/planviewer/PlanViewer").then((module) => ({ default: module.PlanViewer })));
+const ExecutePage = React.lazy(() => import("./features/executer/ExecutePage").then((module) => ({ default: module.ExecutePage })));
 const Planifier = React.lazy(() => import("./features/planifier/Planifier").then((module) => ({ default: module.Planifier })));
 const Piloter = React.lazy(() => import("./features/piloter/Piloter").then((module) => ({ default: module.Piloter })));
 const Equipe = React.lazy(() => import("./modules/chantier/components/Equipe").then((module) => ({ default: module.Equipe })));
 const ApprovisionDashboard = React.lazy(() => import("./modules/approvisionnement/components/ApprovisionDashboard").then((module) => ({ default: module.ApprovisionDashboard })));
 const FinanceDashboard = React.lazy(() => import("./modules/finance/components/FinanceDashboard").then((module) => ({ default: module.FinanceDashboard })));
+const IncidentsPage = React.lazy(() => import("./modules/incidents/pages/IncidentsPage").then((module) => ({ default: module.IncidentsPage })));
 const RHSecurityDashboard = React.lazy(() => import("./modules/rh-securite/components/RHSecurityDashboard").then((module) => ({ default: module.RHSecurityDashboard })));
 const SecurityAuditDashboard = React.lazy(() => import("./modules/rh-securite/components/SecurityAuditDashboard").then((module) => ({ default: module.SecurityAuditDashboard })));
 const IntegrationTestRunner = React.lazy(() => import("./modules/testing/components/IntegrationTestRunner").then((module) => ({ default: module.IntegrationTestRunner })));
@@ -224,6 +223,24 @@ function App() {
             <AnimatePresence mode="wait" initial={false}>
               <Routes location={location} key={location.pathname}>
                 <Route path="/" element={<Navigate to="/executer" replace />} />
+                <Route path="/dashboard" element={(
+                <motion.section
+                  key="dashboard"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                  className="surface-panel p-5 md:p-6"
+                >
+                  <div className="bf-module-header mb-5">
+                    <h2 className="text-xl font-black bf-text-primary">Vue globale</h2>
+                    <p className="text-sm bf-text-muted">Tous vos projets en un coup d'œil</p>
+                  </div>
+                  <Suspense fallback={<SectionLoader label="Chargement du tableau de bord..." />}>
+                    <GlobalDashboard />
+                  </Suspense>
+                </motion.section>
+                )} />
                 <Route path="/executer" element={(
                 <motion.section
                   key="executer"
@@ -231,38 +248,10 @@ function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.22 }}
-                  className="space-y-5"
+                  className="surface-panel p-5 md:p-6"
                 >
-                  <div className="surface-panel p-5 md:p-6">
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 mb-1">Bienvenue sur le cockpit chantier</h2>
-                    <p className="text-sm text-slate-600">Suivez vos documents, vos événements et vos actions rapides au même endroit.</p>
-                  </div>
-
-                  <div className="surface-panel p-5 md:p-6">
-                    <h3 className="font-black text-slate-900 mb-3">Documents du projet</h3>
-                    <Suspense fallback={<SectionLoader label="Chargement des documents..." />}>
-                      <DocumentList projectId={resolvedProjectId} onSelect={setActiveDocumentId} />
-                    </Suspense>
-                  </div>
-
-                  {activeDocumentId && (
-                    <Suspense fallback={<SectionLoader label="Chargement du viewer..." />}>
-                      <div className="surface-panel p-5 md:p-6">
-                        <PlanViewer projectId={resolvedProjectId} documentId={activeDocumentId} />
-                      </div>
-                    </Suspense>
-                  )}
-
-                  <Suspense fallback={<SectionLoader label="Chargement des evenements..." />}>
-                    <div className="surface-panel p-5 md:p-6">
-                      <EventList projectId={resolvedProjectId} />
-                    </div>
-                  </Suspense>
-
-                  <Suspense fallback={<SectionLoader label="Chargement des actions rapides..." />}>
-                    <div className="surface-panel p-5 md:p-6">
-                      <QuickActionPro projectId={resolvedProjectId} activeDocumentId={activeDocumentId || undefined} />
-                    </div>
+                  <Suspense fallback={<SectionLoader label="Chargement exécution terrain..." />}>
+                    <ExecutePage projectId={resolvedProjectId} activeDocumentId={activeDocumentId} onSelectDocument={setActiveDocumentId} />
                   </Suspense>
                 </motion.section>
                 )} />
@@ -336,6 +325,21 @@ function App() {
                 >
                   <Suspense fallback={<SectionLoader label="Chargement finance..." />}>
                     <FinanceDashboard projectId={resolvedProjectId} />
+                  </Suspense>
+                </motion.section>
+                )} />
+
+                <Route path="/incidents" element={(
+                <motion.section
+                  key="incidents"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                  className="surface-panel p-5 md:p-6"
+                >
+                  <Suspense fallback={<SectionLoader label="Chargement incidents..." />}>
+                    <IncidentsPage projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
                 )} />

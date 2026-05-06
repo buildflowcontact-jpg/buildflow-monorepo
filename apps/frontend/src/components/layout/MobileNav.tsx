@@ -17,6 +17,7 @@ export function MobileNav() {
       <NavLink to="/equipe" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Equipe</NavLink>
       <NavLink to="/approvisionner" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Appro</NavLink>
       <NavLink to="/finance" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Finance</NavLink>
+      <NavLink to="/incidents" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Incidents</NavLink>
       <NavLink to="/rh-securite" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>RH</NavLink>
       <NavLink to="/commercial" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Commercial</NavLink>
       <NavLink to="/kpi" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>KPI</NavLink>

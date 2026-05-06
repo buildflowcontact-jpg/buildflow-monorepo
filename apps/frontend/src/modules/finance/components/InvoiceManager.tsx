@@ -3,6 +3,7 @@ import { useInvoices, useCreateInvoice, useUpdateInvoiceStatus } from '../hooks/
 import type { InvoiceRow } from '../hooks/useFinance';
 import { useSuppliers } from '@/modules/approvisionnement/hooks/useSuppliers';
 import { useToast } from '@/ui/ToastProvider';
+import { downloadExcel } from '@/lib/export';
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   pending: { label: 'En attente', className: 'bg-yellow-100 text-yellow-700' },
@@ -67,12 +68,33 @@ export function InvoiceManager({ projectId }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-700">Factures fournisseurs</h3>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
-        >
-          + Nouvelle facture
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              const rows: Array<Array<string | number>> = [
+                ['Référence', 'Fournisseur', 'Montant HT (€)', 'Montant TTC (€)', 'Date facture', 'Statut'],
+                ...invoices.map((inv: InvoiceRow) => [
+                  inv.reference ?? '',
+                  inv.supplier_id ?? '',
+                  inv.amount_ht ?? 0,
+                  inv.amount_ttc ?? 0,
+                  inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('fr-FR') : '',
+                  STATUS_LABELS[inv.status ?? '']?.label ?? inv.status ?? '',
+                ]),
+              ];
+              downloadExcel(`factures-${projectId}.xls`, 'Factures', rows);
+            }}
+            className="text-sm border border-gray-300 text-gray-700 px-3 py-1 rounded hover:bg-gray-50 transition-colors"
+          >
+            ↓ Excel
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+          >
+            + Nouvelle facture
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
