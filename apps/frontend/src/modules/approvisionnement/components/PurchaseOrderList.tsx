@@ -1,0 +1,218 @@
+import React, { useState } from 'react';
+import {
+  usePurchaseOrders,
+  useCreatePurchaseOrder,
+  useUpdatePurchaseOrderStatus,
+} from '../hooks/useProcurement';
+import type { PurchaseOrderRow } from '../hooks/useProcurement';
+import { useSuppliers } from '../hooks/useSuppliers';
+
+const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Brouillon', className: 'bg-gray-100 text-gray-600' },
+  sent: { label: 'Envoyée', className: 'bg-blue-100 text-blue-700' },
+  confirmed: { label: 'Confirmée', className: 'bg-yellow-100 text-yellow-700' },
+  delivered: { label: 'Livrée', className: 'bg-green-100 text-green-700' },
+  cancelled: { label: 'Annulée', className: 'bg-red-100 text-red-600' },
+};
+
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  draft: ['sent', 'cancelled'],
+  sent: ['confirmed', 'cancelled'],
+  confirmed: ['delivered', 'cancelled'],
+  delivered: [],
+  cancelled: [],
+};
+
+interface Props {
+  projectId: string;
+}
+
+export function PurchaseOrderList({ projectId }: Props) {
+  const { data: orders = [], isLoading } = usePurchaseOrders(projectId);
+  const { data: suppliers = [] } = useSuppliers(projectId);
+  const createOrder = useCreatePurchaseOrder(projectId);
+  const updateStatus = useUpdatePurchaseOrderStatus(projectId);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    reference: '',
+    supplier_id: '',
+    total_ht: '',
+    ordered_at: '',
+    expected_delivery_at: '',
+    notes: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.reference.trim()) return;
+    await createOrder.mutateAsync({
+      reference: form.reference.trim(),
+      supplier_id: form.supplier_id || null,
+      total_ht: form.total_ht ? parseFloat(form.total_ht) : null,
+      ordered_at: form.ordered_at || null,
+      expected_delivery_at: form.expected_delivery_at || null,
+      notes: form.notes.trim() || null,
+    });
+    setForm({ reference: '', supplier_id: '', total_ht: '', ordered_at: '', expected_delivery_at: '', notes: '' });
+    setShowForm(false);
+  };
+
+  if (isLoading) {
+    return <div className="text-sm text-gray-500 py-4">Chargement commandes...</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-700">Commandes ({orders.length})</h3>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+        >
+          + Nouvelle commande
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-gray-50 p-3 rounded border space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Référence *</label>
+              <input
+                type="text"
+                value={form.reference}
+                onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+                placeholder="BC-2026-001"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Fournisseur</label>
+              <select
+                value={form.supplier_id}
+                onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+              >
+                <option value="">— Sélectionner —</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Montant HT (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.total_ht}
+                onChange={(e) => setForm({ ...form, total_ht: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Date commande</label>
+              <input
+                type="date"
+                value={form.ordered_at}
+                onChange={(e) => setForm({ ...form, ordered_at: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Livraison prévue</label>
+              <input
+                type="date"
+                value={form.expected_delivery_at}
+                onChange={(e) => setForm({ ...form, expected_delivery_at: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full border rounded px-2 py-1 text-sm"
+              rows={2}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={createOrder.isPending}
+              className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {createOrder.isPending ? 'Création...' : 'Créer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="text-sm text-gray-600 px-3 py-1 rounded border hover:bg-gray-100 transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y">
+        {orders.length === 0 ? (
+          <p className="text-sm text-gray-400 py-2">Aucune commande enregistrée.</p>
+        ) : (
+          orders.map((order: PurchaseOrderRow) => {
+            const supplierName = suppliers.find((s) => s.id === order.supplier_id)?.name;
+            const statusInfo = STATUS_LABELS[order.status ?? ''] ?? { label: order.status, className: 'bg-gray-100 text-gray-600' };
+            const transitions = STATUS_TRANSITIONS[order.status ?? ''] ?? [];
+
+            return (
+              <div key={order.id} className="py-3 space-y-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="font-medium text-sm">{order.reference}</span>
+                    {supplierName && (
+                      <span className="ml-2 text-xs text-gray-500">{supplierName}</span>
+                    )}
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusInfo.className}`}>
+                    {statusInfo.label}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                  {order.total_ht != null && (
+                    <span>{order.total_ht.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+                  )}
+                  {order.ordered_at && (
+                    <span>Commande : {new Date(order.ordered_at).toLocaleDateString('fr-FR')}</span>
+                  )}
+                  {order.expected_delivery_at && (
+                    <span>Livraison : {new Date(order.expected_delivery_at).toLocaleDateString('fr-FR')}</span>
+                  )}
+                </div>
+                {order.notes && (
+                  <p className="text-xs text-gray-400 italic">{order.notes}</p>
+                )}
+                {transitions.length > 0 && (
+                  <div className="flex gap-2 pt-1">
+                    {transitions.map((next: string) => (
+                      <button
+                        key={next}
+                        onClick={() => updateStatus.mutate({ id: order.id, status: next })}
+                        disabled={updateStatus.isPending}
+                        className="text-xs border border-gray-300 px-2 py-0.5 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        → {STATUS_LABELS[next]?.label ?? next}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}

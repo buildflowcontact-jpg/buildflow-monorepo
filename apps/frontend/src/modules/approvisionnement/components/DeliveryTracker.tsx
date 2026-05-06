@@ -1,0 +1,156 @@
+import React, { useState } from 'react';
+import { useDeliveries, useCreateDelivery } from '../hooks/useProcurement';
+import type { DeliveryRow } from '../hooks/useProcurement';
+import { useSuppliers } from '../hooks/useSuppliers';
+import { usePurchaseOrders } from '../hooks/useProcurement';
+
+const DELIVERY_STATUS: Record<string, { label: string; className: string }> = {
+  received: { label: 'Reçu', className: 'bg-green-100 text-green-700' },
+  partial: { label: 'Partiel', className: 'bg-yellow-100 text-yellow-700' },
+  refused: { label: 'Refusé', className: 'bg-red-100 text-red-600' },
+};
+
+interface Props {
+  projectId: string;
+}
+
+export function DeliveryTracker({ projectId }: Props) {
+  const { data: deliveries = [], isLoading } = useDeliveries(projectId);
+  const { data: suppliers = [] } = useSuppliers(projectId);
+  const { data: orders = [] } = usePurchaseOrders(projectId);
+  const createDelivery = useCreateDelivery(projectId);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    order_id: '',
+    supplier_id: '',
+    delivered_at: new Date().toISOString().slice(0, 10),
+    notes: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.delivered_at) return;
+    await createDelivery.mutateAsync({
+      order_id: form.order_id || null,
+      supplier_id: form.supplier_id || null,
+      delivered_at: form.delivered_at,
+      notes: form.notes.trim() || null,
+    });
+    setForm({ order_id: '', supplier_id: '', delivered_at: new Date().toISOString().slice(0, 10), notes: '' });
+    setShowForm(false);
+  };
+
+  if (isLoading) {
+    return <div className="text-sm text-gray-500 py-4">Chargement livraisons...</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-700">Livraisons ({deliveries.length})</h3>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+        >
+          + Enregistrer livraison
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-gray-50 p-3 rounded border space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
+              <input
+                type="date"
+                value={form.delivered_at}
+                onChange={(e) => setForm({ ...form, delivered_at: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Fournisseur</label>
+              <select
+                value={form.supplier_id}
+                onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+              >
+                <option value="">— Sélectionner —</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Commande associée</label>
+              <select
+                value={form.order_id}
+                onChange={(e) => setForm({ ...form, order_id: e.target.value })}
+                className="w-full border rounded px-2 py-1 text-sm"
+              >
+                <option value="">— Aucune —</option>
+                {orders.map((o) => (
+                  <option key={o.id} value={o.id}>{o.reference}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full border rounded px-2 py-1 text-sm"
+              rows={2}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={createDelivery.isPending}
+              className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {createDelivery.isPending ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="text-sm text-gray-600 px-3 py-1 rounded border hover:bg-gray-100 transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y">
+        {deliveries.length === 0 ? (
+          <p className="text-sm text-gray-400 py-2">Aucune livraison enregistrée.</p>
+        ) : (
+          deliveries.map((d: DeliveryRow) => {
+            const supplierName = suppliers.find((s) => s.id === d.supplier_id)?.name;
+            const orderRef = orders.find((o) => o.id === d.order_id)?.reference;
+            const statusInfo = DELIVERY_STATUS[d.status ?? ''] ?? { label: d.status, className: 'bg-gray-100 text-gray-600' };
+
+            return (
+              <div key={d.id} className="py-2 space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {new Date(d.delivered_at).toLocaleDateString('fr-FR')}
+                    {supplierName && <span className="font-normal text-gray-500 ml-2">— {supplierName}</span>}
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusInfo.className}`}>
+                    {statusInfo.label}
+                  </span>
+                </div>
+                {orderRef && <p className="text-xs text-gray-400">Commande : {orderRef}</p>}
+                {d.notes && <p className="text-xs text-gray-400 italic">{d.notes}</p>}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}

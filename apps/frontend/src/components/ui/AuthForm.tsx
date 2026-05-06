@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase } from "@/lib/supabase";
 import { Button } from "./button";
 import { Spinner } from "./Spinner";
 
@@ -22,11 +22,16 @@ export function AuthForm() {
       setLoading(false);
       return;
     }
+    if (!password) {
+      setError("Le mot de passe est requis.");
+      setLoading(false);
+      return;
+    }
     if (mode === "login") {
-      // Connexion avec lien magique
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      // Connexion classique email + mot de passe
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
-      else setMessage("Un lien magique a été envoyé à votre email.");
+      else setMessage("Connexion réussie.");
     } else {
       // Création de compte
       if (!password || password.length < 6) {
@@ -42,46 +47,74 @@ export function AuthForm() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-10 p-6 bg-white dark:bg-zinc-900 rounded shadow">
-      <h2 className="text-xl font-bold mb-4 text-center">
+    <div className="bf-auth-card w-full max-w-md mx-auto p-6 md:p-7">
+      <h2 className="bf-text-primary text-2xl font-black tracking-tight mb-5 text-center">
         {mode === "login" ? "Connexion" : "Créer un compte"}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full px-3 py-2 border rounded"
-        />
-        {mode === "signup" && (
+        <div>
+          <label htmlFor="email" className="bf-text-primary block text-sm font-semibold mb-1.5">Email</label>
           <input
+            id="email"
+            type="email"
+            required
+            placeholder="Email"
+            autoComplete="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="bf-input w-full rounded-xl px-3.5 py-2.5 outline-none transition"
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="bf-text-primary block text-sm font-semibold mb-1.5">Mot de passe</label>
+          <input
+            id="password"
             type="password"
             required
-            placeholder="Mot de passe (min. 6 caractères)"
+            placeholder={mode === "signup" ? "Mot de passe (min. 6 caractères)" : "Mot de passe"}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
             value={password}
             onChange={e => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border rounded"
+            className="bf-input w-full rounded-xl px-3.5 py-2.5 outline-none transition"
           />
-        )}
+        </div>
         <Button
           type="submit"
-          className="w-full"
+          className="bf-primary-button w-full h-11 rounded-xl"
           disabled={loading}
         >
-          {loading ? <Spinner size={16} /> : mode === "login" ? "Recevoir le lien magique" : "Créer un compte"}
+          {loading ? <Spinner size={16} /> : mode === "login" ? "Se connecter" : "Créer un compte"}
         </Button>
       </form>
       <div className="mt-4 text-center">
         {mode === "login" ? (
-          <button className="text-blue-600 hover:underline" onClick={() => setMode("signup")}>Créer un compte</button>
+          <button
+            type="button"
+            className="bf-link-accent font-semibold"
+            onClick={() => {
+              setMode("signup");
+              setMessage(null);
+              setError(null);
+            }}
+          >
+            Créer un compte
+          </button>
         ) : (
-          <button className="text-blue-600 hover:underline" onClick={() => setMode("login")}>Déjà un compte ? Se connecter</button>
+          <button
+            type="button"
+            className="bf-link-accent font-semibold"
+            onClick={() => {
+              setMode("login");
+              setMessage(null);
+              setError(null);
+            }}
+          >
+            Déjà un compte ? Se connecter
+          </button>
         )}
       </div>
-      {error && <div className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</div>}
-      {message && <div className="mt-4 text-center text-sm text-green-700 dark:text-green-400">{message}</div>}
+      {error && <div className="mt-4 text-center text-sm font-semibold text-red-600">{error}</div>}
+      {message && <div className="mt-4 text-center text-sm font-semibold text-emerald-700">{message}</div>}
     </div>
   );
 }

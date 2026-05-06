@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
-export function useRealtimeProjectEvents({ projectId, onEvent }: { projectId: string, onEvent: (evt: any) => void }) {
+export function useRealtimeProjectEvents({ projectId, onEvent }: { projectId: string | null, onEvent: (evt: any) => void }) {
   useEffect(() => {
+    if (!projectId) return;
     const channel = supabase.channel('realtime:project_events')
       .on('postgres_changes', {
         event: '*',

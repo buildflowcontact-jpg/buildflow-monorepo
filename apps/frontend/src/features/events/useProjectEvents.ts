@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../utils/supabaseClient';
+import type { Json } from '../../types/database.types';
 
 export function useProjectEvents(projectId: string) {
   return useQuery({
@@ -19,17 +20,21 @@ export function useProjectEvents(projectId: string) {
 export function useCreateEvent(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ type, description, metadata }: { type: string; description?: string; metadata?: any }) => {
+    mutationFn: async ({ type, description, metadata }: { type: string; description?: string; metadata?: Json }) => {
       const { data, error } = await supabase
         .from('project_events')
-        .insert({ project_id: projectId, type, description, metadata })
+        .insert({ 
+          project_id: projectId, 
+          event_type: type, 
+          event_data: { description: description ?? null, metadata: metadata ?? null } as Json
+        })
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['project-events', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
     },
   });
 }
@@ -37,10 +42,13 @@ export function useCreateEvent(projectId: string) {
 export function useUpdateEvent(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, type, description, metadata }: { id: string; type: string; description?: string; metadata?: any }) => {
+    mutationFn: async ({ id, type, description, metadata }: { id: string; type: string; description?: string; metadata?: Json }) => {
       const { data, error } = await supabase
         .from('project_events')
-        .update({ type, description, metadata })
+        .update({ 
+          event_type: type, 
+          event_data: { description: description ?? null, metadata: metadata ?? null } as Json
+        })
         .eq('id', id)
         .select()
         .single();
@@ -48,7 +56,7 @@ export function useUpdateEvent(projectId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['project-events', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
     },
   });
 }
@@ -65,7 +73,7 @@ export function useDeleteEvent(projectId: string) {
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['project-events', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
     },
   });
 }

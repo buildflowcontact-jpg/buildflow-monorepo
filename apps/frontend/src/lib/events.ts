@@ -63,7 +63,7 @@ async function recalculateProjectProgress(projectId: string) {
     .select('status')
     .eq('project_id', projectId);
   if (!tasks) return;
-  const done = tasks.filter((t: any) => t.status === 'done').length;
+  const done = tasks.filter((t) => t.status === 'done').length;
   const pct = Math.round((done / tasks.length) * 100);
   await supabase
     .from('projects')

@@ -25,28 +25,28 @@ export function Equipe({ membres: initialMembres = [] }: EquipeProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-bold">Équipe</h3>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-2 items-end" aria-label="Ajouter un membre">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium">Nom</label>
+    <div className="space-y-5">
+      <h3 className="bf-text-primary text-2xl font-black tracking-tight">Équipe</h3>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row gap-3 sm:items-end" aria-label="Ajouter un membre">
+        <div className="w-full sm:max-w-sm">
+          <label htmlFor="name" className="bf-text-primary block text-sm font-semibold">Nom</label>
           <input
             id="name"
             type="text"
             {...form.register("name")}
-            className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary"
+            className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none"
             required
           />
           {form.formState.errors.name && <p className="text-red-600 text-xs mt-1">{form.formState.errors.name.message}</p>}
         </div>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl">
           {form.formState.isSubmitting ? <Spinner size={16} /> : "Ajouter"}
         </Button>
       </form>
-      <ul className="divide-y divide-border bg-card rounded shadow border border-border">
+      <ul className="bf-card-soft divide-y divide-slate-200">
         {membres.length ? membres.map((m) => (
-          <li key={m.id} className="px-4 py-2 text-foreground">{m.name}</li>
-        )) : <li className="px-4 py-2 text-muted-foreground">Aucun membre</li>}
+          <li key={m.id} className="bf-text-primary px-4 py-3 font-medium">{m.name}</li>
+        )) : <li className="bf-text-muted px-4 py-3">Aucun membre</li>}
       </ul>
     </div>
   )

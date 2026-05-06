@@ -1,6 +1,6 @@
 import { useForm, UseFormProps, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ZodType, ZodTypeDef, TypeOf } from "zod";
+import { FieldValues } from "react-hook-form";
 
 /**
  * Hook utilitaire pour factoriser l’usage de react-hook-form + zod
@@ -8,14 +8,13 @@ import { ZodType, ZodTypeDef, TypeOf } from "zod";
  * @param options Options additionnelles pour useForm
  */
 export function useZodForm<
-  TSchema extends ZodType<any, ZodTypeDef, any>,
-  TForm = TypeOf<TSchema>
+  TForm extends FieldValues = FieldValues
 >(
-  schema: TSchema,
+  schema: any,
   options?: Omit<UseFormProps<TForm>, "resolver">
 ): UseFormReturn<TForm> {
   return useForm<TForm>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     ...options,
   });
 }

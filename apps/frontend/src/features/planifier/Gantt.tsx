@@ -41,24 +41,24 @@ export function Gantt() {
     <div className="space-y-4">
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap gap-2 items-end" aria-label="Ajouter une tâche">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium">Nom</label>
-          <input id="name" type="text" {...form.register("name")} className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary" required />
+          <label htmlFor="name" className="bf-text-primary block text-sm font-medium">Nom</label>
+          <input id="name" type="text" {...form.register("name")} className="bf-input mt-1 block w-full rounded-xl" required />
           {form.formState.errors.name && <p className="text-red-600 text-xs mt-1">{form.formState.errors.name.message}</p>}
         </div>
         <div>
-          <label htmlFor="start" className="block text-sm font-medium">Début</label>
-          <input id="start" type="date" {...form.register("start")} className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary" required />
+          <label htmlFor="start" className="bf-text-primary block text-sm font-medium">Début</label>
+          <input id="start" type="date" {...form.register("start")} className="bf-input mt-1 block w-full rounded-xl" required />
           {form.formState.errors.start && <p className="text-red-600 text-xs mt-1">{form.formState.errors.start.message}</p>}
         </div>
         <div>
-          <label htmlFor="end" className="block text-sm font-medium">Fin</label>
-          <input id="end" type="date" {...form.register("end")} className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary" required />
+          <label htmlFor="end" className="bf-text-primary block text-sm font-medium">Fin</label>
+          <input id="end" type="date" {...form.register("end")} className="bf-input mt-1 block w-full rounded-xl" required />
           {form.formState.errors.end && <p className="text-red-600 text-xs mt-1">{form.formState.errors.end.message}</p>}
         </div>
         <div>
-          <label htmlFor="dependencies" className="block text-sm font-medium">Dépendances</label>
+          <label htmlFor="dependencies" className="bf-text-primary block text-sm font-medium">Dépendances</label>
           <select id="dependencies" multiple {...form.register("dependencies")}
-            className="mt-1 block w-full rounded border border-border bg-background text-foreground focus:ring-primary focus:border-primary">
+            className="bf-select mt-1 block w-full rounded-xl">
             {tasks.map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -69,27 +69,27 @@ export function Gantt() {
         </Button>
       </form>
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-border text-xs bg-card text-foreground">
+        <table className="bf-table min-w-full text-xs bf-text-primary">
           <thead>
             <tr>
-              <th className="border border-border p-2 bg-muted text-muted-foreground">Tâche</th>
-              <th className="border border-border p-2 bg-muted text-muted-foreground">Début</th>
-              <th className="border border-border p-2 bg-muted text-muted-foreground">Fin</th>
-              <th className="border border-border p-2 bg-muted text-muted-foreground">Dépendances</th>
+              <th className="p-2">Tâche</th>
+              <th className="p-2">Début</th>
+              <th className="p-2">Fin</th>
+              <th className="p-2">Dépendances</th>
             </tr>
           </thead>
           <tbody>
             {tasks.map(task => (
-              <tr key={task.id} className="hover:bg-accent/50">
-                <td className="border border-border p-2 font-bold">{task.name}</td>
-                <td className="border border-border p-2">{task.start}</td>
-                <td className="border border-border p-2">{task.end}</td>
-                <td className="border border-border p-2">{task.dependencies.map((dep: number) => tasks.find(t => t.id === dep)?.name).join(', ')}</td>
+              <tr key={task.id} className="bf-table-row">
+                <td className="p-2 font-bold">{task.name}</td>
+                <td className="p-2">{task.start}</td>
+                <td className="p-2">{task.end}</td>
+                <td className="p-2">{task.dependencies.map((dep: number) => tasks.find(t => t.id === dep)?.name).join(', ')}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="mt-4 text-muted-foreground">(Gantt visuel à venir)</div>
+        <div className="bf-text-muted mt-4">(Gantt visuel à venir)</div>
       </div>
     </div>
   )

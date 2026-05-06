@@ -5,16 +5,17 @@ import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export function PDFViewer({ url }: { url: string }) {
-    console.log('[LOG] PDFViewer url:', url);
   const [numPages, setNumPages] = React.useState<number | null>(null);
+  const DocumentAny: any = Document;
+  const PageAny: any = Page;
 
   return (
     <div className="w-full h-[60vh] bg-gray-100 rounded-xl overflow-auto">
-      <Document file={url} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+      <DocumentAny file={url} onLoadSuccess={(data: { numPages: number }) => setNumPages(data.numPages)}>
         {Array.from(new Array(numPages), (el, index) => (
-          <Page key={`page_${index + 1}`} pageNumber={index + 1} width={800} />
+          <PageAny key={`page_${index + 1}`} pageNumber={index + 1} width={800} />
         ))}
-      </Document>
+      </DocumentAny>
     </div>
   );
 }

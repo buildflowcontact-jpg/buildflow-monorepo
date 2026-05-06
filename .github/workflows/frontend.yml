@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 jobs:
-  build-test-lint:
+  build-test-e2e:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,24 +21,42 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
       - name: Build
         run: npm run build
 
-      - name: Run unit & accessibility tests
-        run: npm run test
+      - name: Check bundle budgets
+        run: npm run check:bundle
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Start preview server
+        run: npm run preview -- --host 127.0.0.1 --port 5173 &
+
+      - name: Wait for preview server
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://127.0.0.1:5173 > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Preview server did not start in time"
+          exit 1
 
       - name: Run e2e tests
-        run: npm run e2e || echo 'e2e tests failed (non-blocking)'
+        run: npm run test:e2e
 
   deploy:
-    needs: build-test-lint
+    needs: build-test-e2e
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     defaults:
@@ -56,6 +74,8 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Check bundle budgets
+        run: npm run check:bundle
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:

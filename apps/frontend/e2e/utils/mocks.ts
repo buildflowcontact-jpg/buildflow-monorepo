@@ -1,24 +1,83 @@
 // e2e/utils/mocks.ts
-import { Page, Route } from '@playwright/test';
+import { Page } from '@playwright/test';
+
+const STORAGE_KEY = 'sb-czfcmeizfaudrimrmpgc-auth-token';
 
 export async function mockAuth(page: Page, email = 'test@user.com') {
+  // Injecte une session Supabase simulée dans le localStorage AVANT le chargement de la page.
+  // Le JWT est construit dans le contexte browser pour garantir un base64url valide.
+  await page.addInitScript(({ key, userEmail }) => {
+    function b64url(str) {
+      return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    function buildJWT(payload) {
+      const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const body = b64url(JSON.stringify(payload));
+      return `${header}.${body}.fakesig`;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const accessToken = buildJWT({
+      sub: '626020ae-6102-450f-b83d-c6025cf90bdc',
+      email: userEmail,
+      role: 'authenticated',
+      aud: 'authenticated',
+      exp: now + 3600,
+      iat: now,
+    });
+    const session = {
+      access_token: accessToken,
+      token_type: 'bearer',
+      expires_in: 3600,
+      expires_at: now + 3600,
+      refresh_token: 'fake-refresh-token',
+      user: {
+        id: '626020ae-6102-450f-b83d-c6025cf90bdc',
+        email: userEmail,
+        role: 'authenticated',
+        aud: 'authenticated',
+        app_metadata: { provider: 'email' },
+        user_metadata: {},
+      },
+    };
+    window.localStorage.setItem(key, JSON.stringify(session));
+    window.localStorage.setItem('onboardingDone', '1');
+  }, { key: STORAGE_KEY, userEmail: email });
+
+  // Mock les endpoints Supabase Auth pour éviter les erreurs réseau
+  // Ces mocks doivent retourner une réponse valide sinon supabase-js peut crasher
+  await page.route('**/auth/v1/user', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: '626020ae-6102-450f-b83d-c6025cf90bdc',
+        email,
+        role: 'authenticated',
+        aud: 'authenticated',
+        app_metadata: { provider: 'email' },
+        user_metadata: {},
+      }),
+    })
+  );
   await page.route('**/auth/v1/token*', route =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ access_token: 'fake', user: { id: '1', email } }),
+      body: JSON.stringify({
+        access_token: 'fake-access-token',
+        token_type: 'bearer',
+        expires_in: 3600,
+        user: {
+          id: '626020ae-6102-450f-b83d-c6025cf90bdc',
+          email,
+          role: 'authenticated',
+          aud: 'authenticated',
+        },
+      }),
     })
   );
-  await page.route('**/auth/v1/user*', route =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ user: { id: '1', email } }),
-    })
-  );
-  await page.route('**/auth/v1/logout*', route =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
-  );
+  // Bloque les WebSockets Supabase Realtime pour éviter les connexions réseau inutiles
+  await page.route('**/realtime/v1/**', route => route.abort());
 }
 
 export async function mockProjects(page: Page, projects = [{ id: 'p1', name: 'Projet Test' }]) {
@@ -43,6 +102,12 @@ export async function mockDocuments(page: Page, documents = []) {
 
 export async function mockAll(page: Page) {
   await mockAuth(page);
+  await mockProjects(page);
+  await mockDocuments(page);
+}
+
+// Version sans injection de session : l'app affiche le formulaire d'auth
+export async function mockAllNoAuth(page: Page) {
   await mockProjects(page);
   await mockDocuments(page);
 }

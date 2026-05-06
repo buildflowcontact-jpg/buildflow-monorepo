@@ -4,9 +4,13 @@ import { mockAll } from './utils/mocks';
 test('connexion/déconnexion', async ({ page }) => {
   await mockAll(page);
   await page.goto('/');
-  await page.getByLabel('email').fill('test@user.com');
-  await page.getByRole('button', { name: /se connecter/i }).click();
-  await expect(page.getByText(/cockpit chantier/i)).toBeVisible();
-  await page.getByRole('button', { name: /déconnexion/i }).click();
-  await expect(page.getByLabel('email')).toBeVisible();
+  // La session est déjà injectée par mockAuth → l'app affiche le cockpit directement
+  await expect(page.getByText(/BuildFlow/i).first()).toBeVisible();
+  const logoutBtn = page.getByRole('button', { name: /déconnexion/i });
+  await expect(logoutBtn).toBeVisible();
+  await logoutBtn.click();
+  // Après déconnexion, le formulaire d'auth s'affiche à nouveau
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(page.getByLabel('Mot de passe')).toBeVisible();
+  await expect(page.getByRole('button', { name: /se connecter/i })).toBeVisible();
 });

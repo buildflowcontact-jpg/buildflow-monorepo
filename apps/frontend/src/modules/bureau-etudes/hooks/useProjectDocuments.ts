@@ -22,14 +22,14 @@ export function useCreateDocument(projectId: string) {
     mutationFn: async ({ title, category }: { title: string; category?: string }) => {
       const { data, error } = await supabase
         .from('documents')
-        .insert({ project_id: projectId, title, category })
+        .insert({ project_id: projectId, title, category: category ?? null })
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['project-documents', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['project-documents', projectId] });
     },
   });
 }
@@ -40,7 +40,7 @@ export function useUpdateDocument(projectId: string) {
     mutationFn: async ({ id, title, category }: { id: string; title: string; category?: string }) => {
       const { data, error } = await supabase
         .from('documents')
-        .update({ title, category })
+        .update({ title, category: category ?? null })
         .eq('id', id)
         .select()
         .single();
@@ -48,7 +48,7 @@ export function useUpdateDocument(projectId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['project-documents', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['project-documents', projectId] });
     },
   });
 }
@@ -65,7 +65,7 @@ export function useDeleteDocument(projectId: string) {
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['project-documents', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['project-documents', projectId] });
     },
   });
 }

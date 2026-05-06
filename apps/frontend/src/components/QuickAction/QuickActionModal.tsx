@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button } from 'shadcn-ui';
+import { Button } from '@/components/ui/button';
 import { uploadImageToSupabase } from '../../modules/chantier/services/uploadImageToSupabase';
 import { emit } from '../../lib/events';
 

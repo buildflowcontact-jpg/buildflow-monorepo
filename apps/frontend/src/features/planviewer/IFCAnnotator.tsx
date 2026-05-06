@@ -1,8 +1,8 @@
 
+import React, { useEffect, useRef, useState } from 'react';
 import { Spinner } from '../../ui/Spinner';
 
 export function IFCAnnotator({ url }: { url: string }) {
-    console.log('[LOG] IFCAnnotator url:', url);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedProps, setSelectedProps] = useState<any>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function IFCAnnotator({ url }: { url: string }) {
       viewer = new ifcjs.IfcViewerAPI({ container: containerRef.current, backgroundColor: 0xf0f0f0 });
       await viewer.IFC.loadIfcUrl(url);
       setLoading(false);
-      viewer.IFC.selector.pickIfcItem = async (mesh, id, modelID) => {
+      viewer.IFC.selector.pickIfcItem = async (_mesh: any, id: number, modelID: number) => {
         selectedExpressID = id;
         const props = await viewer.IFC.getProperties(modelID, id, true, false);
         setSelectedProps(props);

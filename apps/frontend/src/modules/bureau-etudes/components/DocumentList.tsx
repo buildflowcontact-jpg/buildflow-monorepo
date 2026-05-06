@@ -62,10 +62,10 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-bold">Documents</h3>
+        <h3 className="bf-text-primary text-lg font-bold">Documents</h3>
         <Button onClick={() => { setEditDoc(null); setModalOpen(true) }}>Nouveau</Button>
       </div>
-      <ul className="divide-y divide-gray-200 bg-white rounded shadow">
+      <ul className="bf-card-soft divide-y divide-gray-200">
         <AnimatePresence>
           {docs && docs.length ? docs.map((doc: any) => (
             <motion.li
@@ -75,22 +75,22 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="flex items-center justify-between px-4 py-2 hover:bg-gray-50"
+              className="flex items-center justify-between px-4 py-2 hover:bg-slate-50/70"
             >
               <button
-                className="text-left flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bf-text-primary text-left flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onClick={() => onSelect(doc.id)}
                 aria-label={`Ouvrir ${doc.title}`}
               >
                 <span className="font-medium">{doc.title}</span>
-                {doc.category && <span className="ml-2 text-xs text-gray-500">[{doc.category}]</span>}
+                {doc.category && <span className="bf-text-muted ml-2 text-xs">[{doc.category}]</span>}
               </button>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => { setEditDoc(doc); setModalOpen(true) }} aria-label="Éditer">✏️</Button>
                 <Button
                   variant="destructive"
                   size="sm"
-                  disabled={deleteDoc.isLoading}
+                  disabled={deleteDoc.isPending}
                   onClick={async () => {
                     try {
                       await deleteDoc.mutateAsync(doc.id);
@@ -101,40 +101,40 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
                   }}
                   aria-label="Supprimer"
                 >
-                  {deleteDoc.isLoading ? <Spinner size={16} /> : '🗑️'}
+                  {deleteDoc.isPending ? <Spinner size={16} /> : '🗑️'}
                 </Button>
               </div>
             </motion.li>
-          )) : <li className="px-4 py-2 text-gray-500">Aucun document</li>}
+          )) : <li className="bf-text-muted px-4 py-2">Aucun document</li>}
         </AnimatePresence>
       </ul>
       {modalOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" role="dialog" aria-modal="true">
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm space-y-4"
+            className="bf-modal p-6 w-full max-w-sm space-y-4"
             aria-label={editDoc ? "Éditer document" : "Nouveau document"}
           >
-            <h4 className="font-bold mb-2">{editDoc ? "Éditer" : "Nouveau"} document</h4>
+            <h4 className="bf-text-primary font-bold mb-2">{editDoc ? "Éditer" : "Nouveau"} document</h4>
             <div>
-              <label htmlFor="title" className="block text-sm font-medium">Titre</label>
+              <label htmlFor="title" className="bf-text-primary block text-sm font-medium">Titre</label>
               <input
                 id="title"
                 type="text"
                 {...form.register("title")}
-                className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                className="bf-input mt-1 block w-full rounded-xl"
                 autoFocus
                 required
               />
               {form.formState.errors.title && <p className="text-red-600 text-xs mt-1">{form.formState.errors.title.message}</p>}
             </div>
             <div>
-              <label htmlFor="category" className="block text-sm font-medium">Catégorie</label>
+              <label htmlFor="category" className="bf-text-primary block text-sm font-medium">Catégorie</label>
               <input
                 id="category"
                 type="text"
                 {...form.register("category")}
-                className="mt-1 block w-full rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                className="bf-input mt-1 block w-full rounded-xl"
               />
             </div>
             <div className="flex gap-2 justify-end">
