@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WorkerList } from './WorkerList';
 import { RoleManagement } from './RoleManagement';
 import { SecurityAuditLog } from './SecurityAuditLog';
 import { useNavigate } from 'react-router-dom';
+import { usePermission } from '@/app/providers/PermissionProvider';
 
 interface RHSecurityDashboardProps {
   projectId: string;
@@ -13,12 +14,20 @@ type Tab = 'workers' | 'roles' | 'audit';
 export const RHSecurityDashboard: React.FC<RHSecurityDashboardProps> = ({ projectId }) => {
   const [activeTab, setActiveTab] = useState<Tab>('workers');
   const navigate = useNavigate();
+  const { can } = usePermission();
 
   const tabs = [
     { id: 'workers' as Tab, label: 'Collaborateurs', icon: '👥' },
-    { id: 'roles' as Tab, label: 'Rôles et permissions', icon: '🔐' },
-    { id: 'audit' as Tab, label: 'Audit de sécurité', icon: '📋' },
+    ...(can('rh:manage') ? [{ id: 'roles' as Tab, label: 'Rôles et permissions', icon: '🔐' }] : []),
+    ...(can('audit:read') || can('audit:limited') ? [{ id: 'audit' as Tab, label: 'Audit de sécurité', icon: '📋' }] : []),
   ];
+
+  // Si l'onglet actif n'est plus disponible (perte de permission), revenir à 'workers'
+  useEffect(() => {
+    if (!tabs.find((t) => t.id === activeTab)) {
+      setActiveTab('workers');
+    }
+  }, [tabs, activeTab]);
 
   return (
     <div className="space-y-6">

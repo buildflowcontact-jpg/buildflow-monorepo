@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { TimeEntryForm } from './TimeEntryForm';
 import { useTimeEntries } from '../hooks/useTimeTracking';
+import { usePermission } from '@/app/providers/PermissionProvider';
 
 interface TimeTrackingDashboardProps {
   projectId: string;
 }
 
 export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ projectId }) => {
+  const { can } = usePermission();
   const [filterMonth, setFilterMonth] = useState(
     new Date().toISOString().split('T')[0].slice(0, 7)
   );
@@ -86,10 +88,10 @@ export const TimeTrackingDashboard: React.FC<TimeTrackingDashboardProps> = ({ pr
       </div>
 
       {/* Time Entry Form */}
-      <TimeEntryForm projectId={projectId} />
+      {can('time:personal') && <TimeEntryForm projectId={projectId} />}
 
       {/* Worker Summary */}
-      {Object.keys(stats.byWorker).length > 0 && (
+      {can('time:manage_team') && Object.keys(stats.byWorker).length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Heures par collaborateur</h3>
           <div className="space-y-3">

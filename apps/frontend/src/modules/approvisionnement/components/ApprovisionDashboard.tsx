@@ -6,6 +6,7 @@ import { DeliveryTracker } from './DeliveryTracker';
 import { usePurchaseOrders, useDeliveries } from '../hooks/useProcurement';
 import { ModuleLayout } from '@/components/layout/ModuleLayout';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { usePermission } from '@/app/providers/PermissionProvider';
 
 type Tab = 'orders' | 'deliveries' | 'suppliers';
 
@@ -23,6 +24,7 @@ export function ApprovisionDashboard({ projectId }: Props) {
   const [tab, setTab] = useState<Tab>('orders');
   const { data: orders = [] } = usePurchaseOrders(projectId);
   const { data: deliveries = [] } = useDeliveries(projectId);
+  const { can } = usePermission();
 
   const lateOrders = orders.filter((order) => {
     if (!order.expected_delivery_at || order.status === 'delivered') return false;
@@ -57,9 +59,15 @@ export function ApprovisionDashboard({ projectId }: Props) {
       right={
         <>
           <h3 className="bf-text-primary font-black tracking-tight">Actions rapides</h3>
-          <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('orders')}>Nouvelle commande</Button>
-          <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('deliveries')}>Reception livraison</Button>
-          <Button type="button" size="sm" className="w-full justify-start" onClick={() => setTab('orders')}>Escalader retard</Button>
+          {can('procurement:create') && (
+            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('orders')}>Nouvelle commande</Button>
+          )}
+          {can('procurement:receive') && (
+            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('deliveries')}>Reception livraison</Button>
+          )}
+          {can('procurement:manage') && (
+            <Button type="button" size="sm" className="w-full justify-start" onClick={() => setTab('orders')}>Escalader retard</Button>
+          )}
           <p className="text-xs bf-text-muted">Flux: Commandes {orders.length} → Livraisons {deliveries.length}</p>
         </>
       }

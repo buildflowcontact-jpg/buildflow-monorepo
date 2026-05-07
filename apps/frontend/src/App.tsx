@@ -10,6 +10,7 @@ import { initSyncBridge } from "@/services/sync/syncBridge";
 import { Header } from "./components/layout/Header";
 import { Sidebar } from "./components/layout/Sidebar";
 import { MobileNav } from "./components/layout/MobileNav";
+import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { ProjectBanner } from "./components/layout/ProjectBanner";
 import { useProjects } from "./hooks/useProjects";
 import { useSyncUITheme } from "./hooks/useSyncUITheme";
@@ -287,6 +288,7 @@ function App() {
                 )} />
 
                 <Route path="/equipe" element={(
+                <ProtectedRoute permission="module:equipe">
                 <motion.section
                   key="equipe"
                   initial={{ opacity: 0, y: 20 }}
@@ -299,9 +301,11 @@ function App() {
                     <Equipe projectId={resolvedProjectId} projectName={selectedProject?.name ?? 'Projet actif'} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/approvisionner" element={(
+                <ProtectedRoute permission="module:approvisionner">
                 <motion.section
                   key="approvisionner"
                   initial={{ opacity: 0, y: 20 }}
@@ -313,9 +317,11 @@ function App() {
                     <ApprovisionDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/finance" element={(
+                <ProtectedRoute permission="module:finance">
                 <motion.section
                   key="finance"
                   initial={{ opacity: 0, y: 20 }}
@@ -327,6 +333,7 @@ function App() {
                     <FinanceDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/incidents" element={(
@@ -345,6 +352,7 @@ function App() {
                 )} />
 
                 <Route path="/rh-securite" element={(
+                <ProtectedRoute permission="module:rh">
                 <motion.section
                   key="rh-securite"
                   initial={{ opacity: 0, y: 20 }}
@@ -356,9 +364,11 @@ function App() {
                     <RHSecurityDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/rh-securite/audit" element={(
+                <ProtectedRoute permission="audit:read">
                 <motion.section
                   key="rh-securite-audit"
                   initial={{ opacity: 0, y: 20 }}
@@ -370,9 +380,11 @@ function App() {
                     <SecurityAuditDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/commercial" element={(
+                <ProtectedRoute permission="module:commercial">
                 <motion.section
                   key="commercial"
                   initial={{ opacity: 0, y: 20 }}
@@ -384,6 +396,7 @@ function App() {
                     <CommercialDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/kpi" element={(
@@ -401,6 +414,7 @@ function App() {
                 )} />
 
                 <Route path="/time-tracking" element={(
+                <ProtectedRoute permission="module:time">
                 <motion.section
                   key="time-tracking"
                   initial={{ opacity: 0, y: 20 }}
@@ -412,6 +426,7 @@ function App() {
                     <TimeTrackingDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/tests/integration" element={(
@@ -449,6 +464,7 @@ function App() {
                 )} />
 
                 <Route path="/audit" element={(
+                <ProtectedRoute permission="module:audit">
                 <motion.section
                   key="audit"
                   initial={{ opacity: 0, y: 20 }}
@@ -460,6 +476,7 @@ function App() {
                     <AuditTrailPage projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="*" element={<Navigate to="/executer" replace />} />

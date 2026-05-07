@@ -36,6 +36,7 @@ export const IncidentInbox: React.FC<IncidentInboxProps> = ({ projectId }) => {
   const totalCount = data?.count ?? 0;
   const totalPages = Math.ceil(totalCount / INCIDENTS_PAGE_SIZE);
   const canUpdate = can('incidents:update');
+  const canApprove = can('incidents:approve');
 
   if (isLoading) return (
     <div className="space-y-3 p-4">
@@ -87,15 +88,17 @@ export const IncidentInbox: React.FC<IncidentInboxProps> = ({ projectId }) => {
           <IncidentCard incident={incident} onSelect={setSelected} />
           {canUpdate && (
             <div className="flex gap-2 mt-1 px-1 flex-wrap">
-              {availableActions(incident.status as any).map((action) => (
-                <button
-                  key={action}
-                  onClick={() => handleAction(incident, action)}
-                  className="text-xs px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
-                >
-                  {ACTION_LABELS[action]}
-                </button>
-              ))}
+              {availableActions(incident.status as any)
+                .filter((action) => action !== 'approve' || canApprove)
+                .map((action) => (
+                  <button
+                    key={action}
+                    onClick={() => handleAction(incident, action)}
+                    className="text-xs px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+                  >
+                    {ACTION_LABELS[action]}
+                  </button>
+                ))}
             </div>
           )}
         </div>
