@@ -6,10 +6,11 @@ import { ExpenseTracker } from './ExpenseTracker';
 import { useBudgets, useExpenses, useInvoices } from '../hooks/useFinance';
 import { ModuleLayout } from '@/components/layout/ModuleLayout';
 import { SkeletonKpiGrid, SkeletonCard } from '@/components/ui/Skeleton';
+import { usePermission } from '@/app/providers/PermissionProvider';
 
 type Tab = 'budget' | 'invoices' | 'expenses';
 
-const TABS: { key: Tab; label: string }[] = [
+const ALL_TABS: { key: Tab; label: string }[] = [
   { key: 'budget', label: 'Budget prévisionnel' },
   { key: 'invoices', label: 'Factures' },
   { key: 'expenses', label: 'Dépenses' },
@@ -20,6 +21,10 @@ interface Props {
 }
 
 export function FinanceDashboard({ projectId }: Props) {
+  const { can } = usePermission();
+  const fullAccess = can('finance:full');
+  // Les rôles sans finance:full (ex. commercial) voient seulement le budget global
+  const TABS = fullAccess ? ALL_TABS : ALL_TABS.filter((t) => t.key === 'budget');
   const [tab, setTab] = useState<Tab>('budget');
   const { data: budgets = [], isLoading: budgetsLoading } = useBudgets(projectId);
   const { data: invoices = [], isLoading: invoicesLoading } = useInvoices(projectId);
@@ -122,8 +127,8 @@ export function FinanceDashboard({ projectId }: Props) {
       right={
         <>
           <h3 className="bf-text-primary font-black tracking-tight">Actions rapides</h3>
-          <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('invoices')}>Creer facture</Button>
-          <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('expenses')}>Saisir depense</Button>
+          {fullAccess && <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('invoices')}>Creer facture</Button>}
+          {fullAccess && <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('expenses')}>Saisir depense</Button>}
           <Button type="button" size="sm" className="w-full justify-start" onClick={() => setTab('budget')}>Revue budget</Button>
           {alerts.length ? (
             <div className="rounded-xl border border-red-200 bg-red-50/60 p-3">
@@ -145,11 +150,13 @@ export function FinanceDashboard({ projectId }: Props) {
             <p className="text-2xl font-black bf-text-primary">{dashboard.totalBudget.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</p>
             <p className="text-xs bf-text-muted">Restant: {dashboard.budgetRemaining.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</p>
           </div>
-          <div className="bf-card-soft p-3">
-            <p className="text-xs uppercase bf-text-muted">A payer</p>
-            <p className="text-2xl font-black bf-text-primary">{dashboard.toPay.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</p>
-            <p className="text-xs bf-text-muted">Retards: {dashboard.overdueCount}</p>
-          </div>
+          {fullAccess && (
+            <div className="bf-card-soft p-3">
+              <p className="text-xs uppercase bf-text-muted">A payer</p>
+              <p className="text-2xl font-black bf-text-primary">{dashboard.toPay.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</p>
+              <p className="text-xs bf-text-muted">Retards: {dashboard.overdueCount}</p>
+            </div>
+          )}
         </div>
 
         <div className="bf-card-soft p-4">

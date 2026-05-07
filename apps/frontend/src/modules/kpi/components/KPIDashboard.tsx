@@ -4,12 +4,16 @@ import { useQuery } from '@tanstack/react-query';
 import { usePortfolioDashboard } from '../hooks/usePortfolioDashboard';
 import { useActivityTimeline } from '@/modules/audit/hooks/useActivityTimeline';
 import { ActivityTimeline } from '@/components/shared/ActivityTimeline';
+import { usePermission } from '@/app/providers/PermissionProvider';
 
 interface KPIDashboardProps {
   projectId: string;
 }
 
 export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
+  const { can } = usePermission();
+  const showFull = can('dashboard:full');          // admin, chef_projet, bureau_etudes, commercial
+  const showFinance = can('finance:read');          // tous sauf technicien, sous_traitant, viewer
   const { data: portfolio } = usePortfolioDashboard();
   const { data: portfolioActivity = [] } = useActivityTimeline(undefined, 12);
   const { data: project } = useQuery({
@@ -143,7 +147,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
 
   return (
     <div className="space-y-6">
-      {portfolio ? (
+      {showFull && portfolio ? (
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
           <div className="bg-slate-900 text-white rounded-lg shadow p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-slate-300">CA en cours</p>
@@ -168,7 +172,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
         </div>
       ) : null}
 
-      {portfolio?.projects?.length ? (
+      {showFull && portfolio?.projects?.length ? (
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div>
@@ -212,11 +216,13 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
         </div>
       ) : null}
 
-      <ActivityTimeline
-        items={portfolioActivity}
-        title="Timeline portefeuille"
-        emptyLabel="Aucune activité consolidée pour le moment."
-      />
+      {showFull && (
+        <ActivityTimeline
+          items={portfolioActivity}
+          title="Timeline portefeuille"
+          emptyLabel="Aucune activité consolidée pour le moment."
+        />
+      )}
 
       {/* Header */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -253,18 +259,20 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
           </div>
         </div>
 
-        {/* Budget Consumption */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Budget consommé</p>
-          <div className="mt-4">
-            <div className={`text-3xl font-bold ${getProgressColor(kpis.budgetRate)}`}>
-              {kpis.budgetRate}%
+        {/* Budget Consumption — visible seulement si lecture finance autorisée */}
+        {showFinance && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-sm font-medium text-gray-600">Budget consommé</p>
+            <div className="mt-4">
+              <div className={`text-3xl font-bold ${getProgressColor(kpis.budgetRate)}`}>
+                {kpis.budgetRate}%
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                €{(kpis.budgetSpent / 1000).toFixed(1)}k / €{(kpis.budgetTotal / 1000).toFixed(1)}k
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              €{(kpis.budgetSpent / 1000).toFixed(1)}k / €{(kpis.budgetTotal / 1000).toFixed(1)}k
-            </p>
           </div>
-        </div>
+        )}
 
         {/* Supply Chain */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -300,25 +308,27 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
           </div>
         </div>
 
-        {/* Finance */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Finance</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Factures payées</span>
-              <span className="font-semibold text-gray-900">{kpis.invoicesPaid}/{kpis.invoicesTotal}</span>
-            </div>
-            <div className="bg-gray-200 rounded-full h-2">
-              <div
-                className="h-2 rounded-full bg-green-500"
-                style={{ width: `${kpis.invoicesTotal > 0 ? (kpis.invoicesPaid / kpis.invoicesTotal) * 100 : 0}%` }}
-              />
-            </div>
-            <div className="pt-2 text-xs text-gray-500">
-              Total: €{(kpis.invoicesAmount / 1000).toFixed(1)}k
+        {/* Finance — masqué pour technicien / sous_traitant / viewer */}
+        {showFinance && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Finance</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Factures payées</span>
+                <span className="font-semibold text-gray-900">{kpis.invoicesPaid}/{kpis.invoicesTotal}</span>
+              </div>
+              <div className="bg-gray-200 rounded-full h-2">
+                <div
+                  className="h-2 rounded-full bg-green-500"
+                  style={{ width: `${kpis.invoicesTotal > 0 ? (kpis.invoicesPaid / kpis.invoicesTotal) * 100 : 0}%` }}
+                />
+              </div>
+              <div className="pt-2 text-xs text-gray-500">
+                Total: €{(kpis.invoicesAmount / 1000).toFixed(1)}k
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Quality Issues */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -352,14 +362,16 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ projectId }) => {
               {kpis.qualityScore >= 80 ? '✓ Bon' : '⚠ À surveiller'}
             </p>
           </div>
-          <div className={`p-3 rounded-lg border-2 ${kpis.budgetRate <= 100 ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
-            <p className={`text-sm font-medium ${kpis.budgetRate <= 100 ? 'text-green-900' : 'text-red-900'}`}>
-              Budget
-            </p>
-            <p className={`text-xs ${kpis.budgetRate <= 100 ? 'text-green-700' : 'text-red-700'} mt-1`}>
-              {kpis.budgetRate <= 100 ? '✓ Maîtrisé' : '⚠ Dépassement'}
-            </p>
-          </div>
+          {showFinance && (
+            <div className={`p-3 rounded-lg border-2 ${kpis.budgetRate <= 100 ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+              <p className={`text-sm font-medium ${kpis.budgetRate <= 100 ? 'text-green-900' : 'text-red-900'}`}>
+                Budget
+              </p>
+              <p className={`text-xs ${kpis.budgetRate <= 100 ? 'text-green-700' : 'text-red-700'} mt-1`}>
+                {kpis.budgetRate <= 100 ? '✓ Maîtrisé' : '⚠ Dépassement'}
+              </p>
+            </div>
+          )}
           <div className="p-3 rounded-lg border-2 border-blue-500 bg-blue-50">
             <p className="text-sm font-medium text-blue-900">Tâches</p>
             <p className="text-xs text-blue-700 mt-1">{kpis.tasksCompletionRate}% complétées</p>
