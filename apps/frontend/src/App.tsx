@@ -36,7 +36,7 @@ const FinanceDashboard = React.lazy(() => import("./modules/finance/components/F
 const IncidentsPage = React.lazy(() => import("./modules/incidents/pages/IncidentsPage").then((module) => ({ default: module.IncidentsPage })));
 const RHSecurityDashboard = React.lazy(() => import("./modules/rh-securite/components/RHSecurityDashboard").then((module) => ({ default: module.RHSecurityDashboard })));
 const SecurityAuditDashboard = React.lazy(() => import("./modules/rh-securite/components/SecurityAuditDashboard").then((module) => ({ default: module.SecurityAuditDashboard })));
-const IntegrationTestRunner = React.lazy(() => import("./modules/testing/components/IntegrationTestRunner").then((module) => ({ default: module.IntegrationTestRunner })));
+
 const CommercialDashboard = React.lazy(() => import("./modules/commercial/components/CommercialDashboard").then((module) => ({ default: module.CommercialDashboard })));
 const KPIDashboard = React.lazy(() => import("./modules/kpi/components/KPIDashboard").then((module) => ({ default: module.KPIDashboard })));
 const TimeTrackingDashboard = React.lazy(() => import("./modules/time-tracking/components/TimeTrackingDashboard").then((module) => ({ default: module.TimeTrackingDashboard })));
@@ -225,6 +225,7 @@ function App() {
               <Routes location={location} key={location.pathname}>
                 <Route path="/" element={<Navigate to="/executer" replace />} />
                 <Route path="/dashboard" element={(
+                <ProtectedRoute permission="module:dashboard">
                 <motion.section
                   key="dashboard"
                   initial={{ opacity: 0, y: 20 }}
@@ -241,8 +242,10 @@ function App() {
                     <GlobalDashboard />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
                 <Route path="/executer" element={(
+                <ProtectedRoute permission="module:executer">
                 <motion.section
                   key="executer"
                   initial={{ opacity: 0, y: 20 }}
@@ -255,9 +258,11 @@ function App() {
                     <ExecutePage projectId={resolvedProjectId} activeDocumentId={activeDocumentId} onSelectDocument={setActiveDocumentId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/planifier" element={(
+                <ProtectedRoute permission="module:planifier">
                 <motion.section
                   key="planifier"
                   initial={{ opacity: 0, y: 20 }}
@@ -270,9 +275,11 @@ function App() {
                     <Planifier />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/piloter" element={(
+                <ProtectedRoute permission="module:piloter">
                 <motion.section
                   key="piloter"
                   initial={{ opacity: 0, y: 20 }}
@@ -285,6 +292,7 @@ function App() {
                     <Piloter projectName={selectedProject?.name ?? 'Projet actif'} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/equipe" element={(
@@ -400,6 +408,7 @@ function App() {
                 )} />
 
                 <Route path="/kpi" element={(
+                <ProtectedRoute permission="module:kpi">
                 <motion.section
                   key="kpi"
                   initial={{ opacity: 0, y: 20 }}
@@ -411,6 +420,7 @@ function App() {
                     <KPIDashboard projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/time-tracking" element={(
@@ -429,21 +439,8 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
-                <Route path="/tests/integration" element={(
-                <motion.section
-                  key="integration-tests"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.22 }}
-                >
-                  <Suspense fallback={<SectionLoader label="Chargement des tests..." />}>
-                    <IntegrationTestRunner />
-                  </Suspense>
-                </motion.section>
-                )} />
-
                 <Route path="/parametres" element={(
+                <ProtectedRoute permission="module:parametres">
                 <motion.section
                   key="parametres"
                   initial={{ opacity: 0, y: 20 }}
@@ -455,12 +452,15 @@ function App() {
                     <AccountSettings />
                   </Suspense>
                 </motion.section>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/terrain" element={(
+                <ProtectedRoute permission="module:terrain">
                   <Suspense fallback={<div className="fixed inset-0 bg-neutral-950 flex items-center justify-center text-white text-sm">Chargement…</div>}>
                     <TerrainPage projectId={resolvedProjectId} />
                   </Suspense>
+                </ProtectedRoute>
                 )} />
 
                 <Route path="/audit" element={(

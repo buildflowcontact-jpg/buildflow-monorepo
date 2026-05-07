@@ -171,12 +171,20 @@ const PermissionContext = createContext<PermissionContextValue>({
 export const PermissionProvider: React.FC<{ userId: string | undefined; children: React.ReactNode }> = ({ userId, children }) => {
   const { currentProjectId } = useProject();
 
+  // En TanStack Query v5, enabled:false donne isLoading=false (contrairement à v4).
+  // On active la requête seulement quand les deux IDs sont disponibles.
+  const isEnabled = !!currentProjectId && !!userId;
+
   const { data: role = "viewer", isLoading } = useQuery<ProjectRole>({
     queryKey: ["project-role", currentProjectId, userId],
     queryFn: () => fetchProjectRole(currentProjectId!, userId!),
-    enabled: !!currentProjectId && !!userId,
+    enabled: isEnabled,
     staleTime: 60_000,
   });
+
+  // Considère le rôle comme "en cours de chargement" tant que l'utilisateur est
+  // connecté mais que le projet n'est pas encore résolu, pour éviter un flash viewer.
+  const isLoadingRole = isLoading || (!!userId && !currentProjectId);
 
   const can = useMemo(() => {
     const perms = new Set(ROLE_PERMISSIONS[role] ?? []);
@@ -184,8 +192,8 @@ export const PermissionProvider: React.FC<{ userId: string | undefined; children
   }, [role]);
 
   const value = useMemo<PermissionContextValue>(
-    () => ({ role, can, isLoadingRole: isLoading }),
-    [role, can, isLoading]
+    () => ({ role, can, isLoadingRole }),
+    [role, can, isLoadingRole]
   );
 
   return <PermissionContext.Provider value={value}>{children}</PermissionContext.Provider>;
