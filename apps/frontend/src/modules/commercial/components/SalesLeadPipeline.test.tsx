@@ -18,6 +18,11 @@ jest.mock('../hooks/useCommercial', () => ({
   useUpdateSalesLead: jest.fn(),
 }));
 
+// Bloque useCreateProject -> supabase -> import.meta.env (non supporté par Jest CJS)
+jest.mock('@/hooks/useCreateProject', () => ({
+  useCreateProject: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
+}));
+
 const mockedUseClients = useClients as jest.Mock;
 const mockedUseCreateSalesLead = useCreateSalesLead as jest.Mock;
 const mockedUseDeleteSalesLead = useDeleteSalesLead as jest.Mock;
