@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { usePermission } from '@/app/providers/PermissionProvider';
 
 function viewLinkClass(isActive: boolean) {
   return isActive
@@ -8,22 +9,26 @@ function viewLinkClass(isActive: boolean) {
 }
 
 export function MobileNav() {
+  const { can } = usePermission();
+
   return (
-    <nav className="bf-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 px-2 py-2 flex gap-1">
-      <NavLink to="/terrain" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🚨</NavLink>
-      <NavLink to="/executer" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Executer</NavLink>
-      <NavLink to="/planifier" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Planifier</NavLink>
-      <NavLink to="/piloter" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Piloter</NavLink>
-      <NavLink to="/equipe" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Equipe</NavLink>
-      <NavLink to="/approvisionner" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Appro</NavLink>
-      <NavLink to="/finance" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Finance</NavLink>
-      <NavLink to="/incidents" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Incidents</NavLink>
-      <NavLink to="/rh-securite" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>RH</NavLink>
-      <NavLink to="/commercial" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Commercial</NavLink>
-      <NavLink to="/kpi" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>KPI</NavLink>
-      <NavLink to="/time-tracking" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Temps</NavLink>
-      <NavLink to="/parametres" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Params</NavLink>
-      <NavLink to="/audit" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🔐</NavLink>
+    <nav className="bf-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 px-2 py-2 flex gap-1 overflow-x-auto">
+      {can('module:dashboard')      && <NavLink to="/dashboard"      className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🌐</NavLink>}
+      {can('module:terrain')        && <NavLink to="/terrain"        className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🚨</NavLink>}
+      {can('module:executer')       && <NavLink to="/executer"       className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Exec</NavLink>}
+      {can('module:planifier')      && <NavLink to="/planifier"      className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Plan</NavLink>}
+      {can('module:piloter')        && <NavLink to="/piloter"        className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Pilot</NavLink>}
+      {can('module:equipe')         && <NavLink to="/equipe"         className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Equipe</NavLink>}
+      {can('module:approvisionner') && <NavLink to="/approvisionner" className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Appro</NavLink>}
+      {can('module:finance')        && <NavLink to="/finance"        className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Finance</NavLink>}
+      {can('module:incidents')      && <NavLink to="/incidents"      className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Inc</NavLink>}
+      {can('module:rh')             && <NavLink to="/rh-securite"    className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>RH</NavLink>}
+      {can('module:commercial')     && <NavLink to="/commercial"     className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Com</NavLink>}
+      {can('module:kpi')            && <NavLink to="/kpi"            className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>KPI</NavLink>}
+      {can('module:time')           && <NavLink to="/time-tracking"  className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Temps</NavLink>}
+      {can('module:parametres')     && <NavLink to="/parametres"     className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>⚙️</NavLink>}
+      {can('module:audit')          && <NavLink to="/audit"          className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🔐</NavLink>}
     </nav>
   );
 }
+

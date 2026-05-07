@@ -1,129 +1,161 @@
-// app/providers/PermissionProvider.tsx
-// Système de permissions basé sur le rôle de l'utilisateur dans le projet courant.
-//
-// Le rôle est chargé depuis project_members (Supabase).
-// Les permissions sont calculées à partir d'une matrice statique.
-// La fonction can() est exposée via usePermission().
-// -----------------------------------------------------------------------
-
+﻿// app/providers/PermissionProvider.tsx
 import React, { createContext, useContext, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useProject } from "./ProjectProvider";
 
-// ---------------------------------------------------------------------------
-// Types de rôles
-// ---------------------------------------------------------------------------
 export type ProjectRole =
   | "admin"
   | "chef_projet"
   | "chef_chantier"
-  | "technicien"
-  | "commercial"
   | "bureau_etudes"
+  | "commercial"
+  | "technicien"
+  | "sous_traitant"
   | "viewer";
 
 const ROLE_ALIASES: Record<string, ProjectRole> = {
-  ADMIN: 'admin',
-  CHEF_PROJET: 'chef_projet',
-  CHEF_CHANTIER: 'chef_chantier',
-  TECHNICIEN: 'technicien',
-  COMMERCIAL: 'commercial',
-  BE: 'bureau_etudes',
-  BUREAU_ETUDES: 'bureau_etudes',
-  viewer: 'viewer',
-  admin: 'admin',
-  chef_projet: 'chef_projet',
-  chef_chantier: 'chef_chantier',
-  technicien: 'technicien',
-  commercial: 'commercial',
-  bureau_etudes: 'bureau_etudes',
+  admin: "admin", ADMIN: "admin", owner: "admin",
+  chef_projet: "chef_projet", CHEF_PROJET: "chef_projet", charge_projet: "chef_projet", chp: "chef_projet", manager: "chef_projet",
+  chef_chantier: "chef_chantier", CHEF_CHANTIER: "chef_chantier", chc: "chef_chantier", site_manager: "chef_chantier",
+  bureau_etudes: "bureau_etudes", BUREAU_ETUDES: "bureau_etudes", BE: "bureau_etudes", be: "bureau_etudes",
+  commercial: "commercial", COMMERCIAL: "commercial", com: "commercial",
+  technicien: "technicien", TECHNICIEN: "technicien", tech: "technicien",
+  sous_traitant: "sous_traitant", SOUS_TRAITANT: "sous_traitant", subcontractor: "sous_traitant", st: "sous_traitant",
+  viewer: "viewer", VIEWER: "viewer",
 };
 
-// ---------------------------------------------------------------------------
-// Permissions atomiques
-// ---------------------------------------------------------------------------
 export type Permission =
-  | "incident:create"
-  | "incident:update"
-  | "incident:delete"
-  | "incident:approve"
-  | "incident:escalate"
-  | "task:create"
-  | "task:update"
-  | "task:validate"
-  | "task:delete"
-  | "delivery:create"
-  | "delivery:receive"
-  | "finance:view"
-  | "finance:export"
-  | "member:manage"
-  | "project:settings"
-  | "audit:view"
-  | "workflow:manage";
+  | "module:dashboard" | "module:terrain" | "module:executer" | "module:planifier"
+  | "module:piloter" | "module:equipe" | "module:approvisionner" | "module:finance"
+  | "module:incidents" | "module:rh" | "module:commercial" | "module:kpi"
+  | "module:time" | "module:audit" | "module:parametres"
+  | "dashboard:full" | "dashboard:operational" | "dashboard:personal" | "dashboard:limited"
+  | "documents:read" | "documents:create" | "documents:update" | "documents:delete" | "documents:publish" | "documents:annotate"
+  | "tasks:read" | "tasks:create" | "tasks:update" | "tasks:validate" | "tasks:delete" | "tasks:assign"
+  | "incidents:read" | "incidents:read_critical" | "incidents:create" | "incidents:update"
+  | "incidents:delete" | "incidents:approve" | "incidents:escalate" | "incidents:validate_terrain"
+  | "procurement:read" | "procurement:create" | "procurement:manage" | "procurement:receive"
+  | "finance:read" | "finance:full" | "finance:export"
+  | "rh:read" | "rh:manage" | "team:invite" | "team:remove" | "team:manage_roles"
+  | "commercial:read" | "commercial:full"
+  | "time:personal" | "time:manage_team" | "time:read"
+  | "audit:read" | "audit:limited"
+  | "settings:update" | "workflow:manage" | "project:settings";
 
-// ---------------------------------------------------------------------------
-// Matrice de permissions par rôle
-// ---------------------------------------------------------------------------
 const ROLE_PERMISSIONS: Record<ProjectRole, Permission[]> = {
   admin: [
-    "incident:create", "incident:update", "incident:delete", "incident:approve", "incident:escalate",
-    "task:create", "task:update", "task:validate", "task:delete",
-    "delivery:create", "delivery:receive",
-    "finance:view", "finance:export",
-    "member:manage", "project:settings",
-    "audit:view", "workflow:manage",
+    "module:dashboard","module:terrain","module:executer","module:planifier",
+    "module:piloter","module:equipe","module:approvisionner","module:finance",
+    "module:incidents","module:rh","module:commercial","module:kpi",
+    "module:time","module:audit","module:parametres",
+    "dashboard:full",
+    "documents:read","documents:create","documents:update","documents:delete","documents:publish","documents:annotate",
+    "tasks:read","tasks:create","tasks:update","tasks:validate","tasks:delete","tasks:assign",
+    "incidents:read","incidents:create","incidents:update","incidents:delete","incidents:approve","incidents:escalate","incidents:validate_terrain",
+    "procurement:read","procurement:create","procurement:manage","procurement:receive",
+    "finance:read","finance:full","finance:export",
+    "rh:read","rh:manage","team:invite","team:remove","team:manage_roles",
+    "commercial:read","commercial:full",
+    "time:personal","time:manage_team","time:read",
+    "audit:read",
+    "settings:update","workflow:manage","project:settings",
   ],
   chef_projet: [
-    "incident:create", "incident:update", "incident:approve", "incident:escalate",
-    "task:create", "task:update", "task:validate",
-    "delivery:create", "delivery:receive",
-    "finance:view",
-    "audit:view", "workflow:manage",
+    "module:dashboard","module:terrain","module:executer","module:planifier",
+    "module:piloter","module:equipe","module:approvisionner","module:finance",
+    "module:incidents","module:rh","module:commercial","module:kpi",
+    "module:time","module:audit","module:parametres",
+    "dashboard:full",
+    "documents:read","documents:create","documents:update","documents:delete","documents:publish","documents:annotate",
+    "tasks:read","tasks:create","tasks:update","tasks:validate","tasks:delete","tasks:assign",
+    "incidents:read","incidents:create","incidents:update","incidents:approve","incidents:escalate","incidents:validate_terrain",
+    "procurement:read","procurement:create","procurement:manage","procurement:receive",
+    "finance:read","finance:full","finance:export",
+    "rh:read","rh:manage","team:invite","team:remove","team:manage_roles",
+    "commercial:read",
+    "time:read",
+    "audit:read",
+    "settings:update","workflow:manage","project:settings",
   ],
   chef_chantier: [
-    "incident:create", "incident:update", "incident:escalate",
-    "task:create", "task:update", "task:validate",
-    "delivery:receive",
-  ],
-  technicien: [
-    "incident:create", "incident:update",
-    "task:update",
-  ],
-  commercial: [
-    "incident:create",
-    "delivery:create",
-    "finance:view",
+    "module:dashboard","module:terrain","module:executer","module:planifier",
+    "module:piloter","module:equipe","module:approvisionner",
+    "module:incidents","module:rh","module:kpi","module:time","module:parametres",
+    "dashboard:operational",
+    "documents:read","documents:annotate",
+    "tasks:read","tasks:create","tasks:update","tasks:validate","tasks:assign",
+    "incidents:read","incidents:create","incidents:update","incidents:escalate","incidents:validate_terrain",
+    "procurement:read","procurement:receive",
+    "rh:read","team:invite","team:remove",
+    "time:personal","time:manage_team",
+    "audit:limited",
+    "settings:update",
   ],
   bureau_etudes: [
-    "incident:create", "incident:update",
-    "task:create", "task:update",
-    "audit:view",
+    "module:dashboard","module:executer","module:planifier",
+    "module:piloter","module:approvisionner","module:incidents",
+    "module:kpi","module:parametres",
+    "dashboard:full",
+    "documents:read","documents:create","documents:update","documents:delete","documents:publish","documents:annotate",
+    "tasks:read","tasks:create","tasks:update","tasks:validate",
+    "incidents:read","incidents:create","incidents:update",
+    "procurement:read",
+    "audit:read",
+    "settings:update",
   ],
-  viewer: [],
+  commercial: [
+    "module:dashboard","module:executer","module:planifier",
+    "module:piloter","module:approvisionner","module:finance",
+    "module:incidents","module:commercial","module:kpi","module:parametres",
+    "dashboard:full",
+    "documents:read",
+    "tasks:read",
+    "incidents:read_critical",
+    "procurement:read",
+    "finance:read",
+    "commercial:read","commercial:full",
+    "settings:update",
+  ],
+  technicien: [
+    "module:dashboard","module:terrain","module:executer",
+    "module:incidents","module:time","module:parametres",
+    "dashboard:personal",
+    "documents:read",
+    "tasks:read","tasks:update",
+    "incidents:read","incidents:create",
+    "time:personal",
+    "settings:update",
+  ],
+  sous_traitant: [
+    "module:dashboard","module:terrain","module:executer",
+    "module:incidents","module:time",
+    "dashboard:limited",
+    "documents:read",
+    "tasks:read","tasks:update",
+    "incidents:create",
+    "time:personal",
+  ],
+  viewer: [
+    "module:dashboard","module:executer",
+    "dashboard:limited",
+    "documents:read",
+    "tasks:read",
+    "incidents:read",
+  ],
 };
 
-// ---------------------------------------------------------------------------
-// Fetch du rôle depuis project_members
-// ---------------------------------------------------------------------------
-const fetchProjectRole = async (
-  projectId: string,
-  userId: string
-): Promise<ProjectRole> => {
+const fetchProjectRole = async (projectId: string, userId: string): Promise<ProjectRole> => {
   const { data, error } = await supabase
     .from("project_members")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", userId)
     .maybeSingle();
-
   if (error || !data) return "viewer";
   return ROLE_ALIASES[String(data.role)] ?? "viewer";
 };
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
 interface PermissionContextValue {
   role: ProjectRole;
   can: (permission: Permission) => boolean;
@@ -136,13 +168,7 @@ const PermissionContext = createContext<PermissionContextValue>({
   isLoadingRole: true,
 });
 
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
-export const PermissionProvider: React.FC<{
-  userId: string | undefined;
-  children: React.ReactNode;
-}> = ({ userId, children }) => {
+export const PermissionProvider: React.FC<{ userId: string | undefined; children: React.ReactNode }> = ({ userId, children }) => {
   const { currentProjectId } = useProject();
 
   const { data: role = "viewer", isLoading } = useQuery<ProjectRole>({
@@ -162,14 +188,8 @@ export const PermissionProvider: React.FC<{
     [role, can, isLoading]
   );
 
-  return (
-    <PermissionContext.Provider value={value}>{children}</PermissionContext.Provider>
-  );
+  return <PermissionContext.Provider value={value}>{children}</PermissionContext.Provider>;
 };
 
-// ---------------------------------------------------------------------------
-// Hooks
-// ---------------------------------------------------------------------------
 export const usePermission = () => useContext(PermissionContext);
-
 export const useRole = (): ProjectRole => useContext(PermissionContext).role;
