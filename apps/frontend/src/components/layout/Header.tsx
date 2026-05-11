@@ -16,7 +16,7 @@ interface HeaderProps {
 export function Header({ userRole, email, onSignOut, statusLabel, projectId }: HeaderProps) {
   return (
     <header className="bf-header sticky top-0 z-40">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">
+      <div className="w-full px-4 md:px-8 xl:px-10 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="BuildFlow" className="h-11 w-11 rounded-xl object-contain bf-logo" />
           <div>

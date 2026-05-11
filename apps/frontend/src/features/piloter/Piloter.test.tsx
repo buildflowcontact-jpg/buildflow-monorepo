@@ -26,7 +26,7 @@ jest.mock('@/components/layout/ModuleLayout', () => ({
 describe('Piloter', () => {
   it('affiche le titre et le nom du projet', () => {
     render(<Piloter projectName="Chantier Alpha" />);
-    expect(screen.getByText('Piloter')).toBeInTheDocument();
+    expect(screen.getByText('Taches')).toBeInTheDocument();
     expect(screen.getAllByText('Chantier Alpha').length).toBeGreaterThan(0);
   });
 
@@ -42,8 +42,8 @@ describe('Piloter', () => {
 
   it('affiche les 3 boutons d\'action rapide', () => {
     render(<Piloter />);
-    expect(screen.getByText('Exporter rapport')).toBeInTheDocument();
-    expect(screen.getByText('Revue alertes')).toBeInTheDocument();
-    expect(screen.getByText("Plan d'action")).toBeInTheDocument();
+    expect(screen.getByText('Créer une tache')).toBeInTheDocument();
+    expect(screen.getByText('Réassigner une priorité')).toBeInTheDocument();
+    expect(screen.getByText('Clôturer les taches du jour')).toBeInTheDocument();
   });
 });

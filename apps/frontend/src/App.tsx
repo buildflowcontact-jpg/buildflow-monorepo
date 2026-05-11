@@ -198,7 +198,7 @@ function App() {
           projectId={resolvedProjectId}
         />
 
-        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-4 md:pt-6 pb-28 md:pb-8">
+        <div className="w-full px-4 md:px-8 xl:px-10 pt-4 md:pt-6 pb-28 md:pb-8">
           <ProjectBanner
             label="Projet"
             projectName={selectedProject?.name ?? (isProjectsLoading ? 'Chargement du projet...' : 'Aucun projet disponible')}
@@ -223,7 +223,7 @@ function App() {
             {!isProjectsLoading && resolvedProjectId ? (
             <AnimatePresence mode="wait" initial={false}>
               <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<Navigate to="/executer" replace />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={(
                 <ProtectedRoute permission="module:dashboard">
                 <motion.section
@@ -261,6 +261,8 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
+                <Route path="/documents" element={<Navigate to="/executer" replace />} />
+
                 <Route path="/planifier" element={(
                 <ProtectedRoute permission="module:planifier">
                 <motion.section
@@ -294,6 +296,8 @@ function App() {
                 </motion.section>
                 </ProtectedRoute>
                 )} />
+
+                <Route path="/taches" element={<Navigate to="/piloter" replace />} />
 
                 <Route path="/equipe" element={(
                 <ProtectedRoute permission="module:equipe">
@@ -463,6 +467,8 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
+                <Route path="/retour-chantier" element={<Navigate to="/terrain" replace />} />
+
                 <Route path="/audit" element={(
                 <ProtectedRoute permission="module:audit">
                 <motion.section
@@ -479,7 +485,7 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
-                <Route path="*" element={<Navigate to="/executer" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </AnimatePresence>
             ) : null}

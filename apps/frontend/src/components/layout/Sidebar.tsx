@@ -14,12 +14,12 @@ export function Sidebar() {
   return (
     <nav className="hidden md:flex items-center gap-2 mb-6 flex-wrap">
       {can('module:dashboard')      && <NavLink to="/dashboard"      className={({ isActive }) => viewLinkClass(isActive)}>Tableau de bord</NavLink>}
-      {can('module:piloter')        && <NavLink to="/piloter"         className={({ isActive }) => viewLinkClass(isActive)}>Taches</NavLink>}
+      {can('module:piloter')        && <NavLink to="/taches"          className={({ isActive }) => viewLinkClass(isActive)}>Taches</NavLink>}
       {can('module:planifier')      && <NavLink to="/planifier"       className={({ isActive }) => viewLinkClass(isActive)}>Planning</NavLink>}
-      {can('module:executer')       && <NavLink to="/executer"        className={({ isActive }) => viewLinkClass(isActive)}>Documents</NavLink>}
+      {can('module:executer')       && <NavLink to="/documents"       className={({ isActive }) => viewLinkClass(isActive)}>Documents</NavLink>}
       {can('module:equipe')         && <NavLink to="/equipe"          className={({ isActive }) => viewLinkClass(isActive)}>Equipe</NavLink>}
       {can('module:approvisionner') && <NavLink to="/approvisionner"  className={({ isActive }) => viewLinkClass(isActive)}>Appro</NavLink>}
-      {can('module:terrain')        && <NavLink to="/terrain"         className={({ isActive }) => viewLinkClass(isActive)}>Retour chantier</NavLink>}
+      {can('module:terrain')        && <NavLink to="/retour-chantier" className={({ isActive }) => viewLinkClass(isActive)}>Retour chantier</NavLink>}
     </nav>
   );
 }
