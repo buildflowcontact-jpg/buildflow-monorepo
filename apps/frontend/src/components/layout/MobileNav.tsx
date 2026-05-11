@@ -14,7 +14,7 @@ export function MobileNav() {
   return (
     <nav className="bf-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 px-2 py-2 flex gap-1 overflow-x-auto">
       {can('module:dashboard')      && <NavLink to="/dashboard"      className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>🏠</NavLink>}
-      {can('module:piloter')        && <NavLink to="/taches"          className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Taches</NavLink>}
+      {can('module:piloter')        && <NavLink to="/taches"          className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Tâches</NavLink>}
       {can('module:planifier')      && <NavLink to="/planifier"       className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Plan</NavLink>}
       {can('module:executer')       && <NavLink to="/documents"       className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Docs</NavLink>}
       {can('module:equipe')         && <NavLink to="/equipe"          className={({ isActive }) => `flex-1 text-xs text-center ${viewLinkClass(isActive)}`}>Equipe</NavLink>}

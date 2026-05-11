@@ -1,9 +1,6 @@
 import React from 'react';
 import { DocumentList } from '@/modules/bureau-etudes/components/DocumentList';
-import { EventList } from '@/features/events/EventList';
 import { PlanViewer } from '@/features/planviewer/PlanViewer';
-import QuickActionPro from '@/QuickActionPro';
-import { Button } from '@/components/ui/button';
 import { ModuleLayout } from '@/components/layout/ModuleLayout';
 
 interface ExecutePageProps {
@@ -25,18 +22,12 @@ export function ExecutePage({ projectId, activeDocumentId, onSelectDocument }: E
       }
       right={
         <>
-          <h3 className="bf-text-primary font-black tracking-tight mb-3">Actions rapides</h3>
-          <div className="grid grid-cols-1 gap-2 mb-3">
-            <Button type="button" variant="ghost" className="justify-start">Photo incident</Button>
-            <Button type="button" variant="ghost" className="justify-start">Signaler incident</Button>
-            <Button type="button" variant="ghost" className="justify-start">Tache terminee</Button>
-          </div>
-          <QuickActionPro projectId={projectId} activeDocumentId={activeDocumentId ?? undefined} />
-          <div className="bf-card-soft p-4 mt-2">
-            <h3 className="bf-text-primary font-black tracking-tight mb-3">Activite live</h3>
-            <div className="max-h-[320px] overflow-auto">
-              <EventList projectId={projectId} />
-            </div>
+          <h3 className="bf-text-primary font-black tracking-tight mb-3">Gestion documentaire</h3>
+          <div className="bf-card-soft p-4 mt-2 space-y-2 text-sm bf-text-muted">
+            <p>1. Déposez vos documents et versions.</p>
+            <p>2. Recherchez un document via la barre de recherche.</p>
+            <p>3. Ouvrez le document dans le viewer central.</p>
+            <p>4. Gérez les signatures électroniques depuis la liste.</p>
           </div>
         </>
       }

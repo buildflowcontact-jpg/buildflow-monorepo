@@ -26,6 +26,7 @@ interface IncidentInboxProps {
 
 export const IncidentInbox: React.FC<IncidentInboxProps> = ({ projectId }) => {
   const [page, setPage] = useState(0);
+  const [period, setPeriod] = useState<7 | 30 | 90>(30);
   const { data, isLoading, isError } = useIncidentsPaginated(projectId, page);
   const { mutate: updateIncident } = useUpdateIncident(projectId);
   const { availableActions, transition } = useIncidentWorkflow();
@@ -37,6 +38,25 @@ export const IncidentInbox: React.FC<IncidentInboxProps> = ({ projectId }) => {
   const totalPages = Math.ceil(totalCount / INCIDENTS_PAGE_SIZE);
   const canUpdate = can('incidents:update');
   const canApprove = can('incidents:approve');
+
+  const periodFiltered = incidents.filter((incident) => {
+    const created = new Date(incident.created_at);
+    const min = new Date();
+    min.setDate(min.getDate() - period);
+    return created >= min;
+  });
+
+  const severityStats = periodFiltered.reduce<Record<string, number>>((acc, incident) => {
+    const key = incident.severity ?? 'non_renseignee';
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const workflowStats = periodFiltered.reduce<Record<string, number>>((acc, incident) => {
+    const key = incident.status ?? 'non_renseigne';
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
 
   if (isLoading) return (
     <div className="space-y-3 p-4">
@@ -68,6 +88,43 @@ export const IncidentInbox: React.FC<IncidentInboxProps> = ({ projectId }) => {
 
   return (
     <div className="space-y-3 p-4">
+      <div className="bf-card-soft p-3 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs uppercase font-semibold bf-text-muted">Statistiques incidents</p>
+          <select
+            className="border border-gray-300 rounded px-2 py-1 text-xs"
+            value={period}
+            onChange={(e) => setPeriod(Number(e.target.value) as 7 | 30 | 90)}
+          >
+            <option value={7}>7 jours</option>
+            <option value={30}>30 jours</option>
+            <option value={90}>90 jours</option>
+          </select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div>
+            <p className="font-semibold mb-1">Par sévérité</p>
+            {Object.keys(severityStats).length === 0 ? (
+              <p className="text-gray-400">Aucune donnée.</p>
+            ) : (
+              Object.entries(severityStats).map(([severity, count]) => (
+                <p key={severity} className="text-gray-600">{severity}: {count}</p>
+              ))
+            )}
+          </div>
+          <div>
+            <p className="font-semibold mb-1">Workflow validation</p>
+            {Object.keys(workflowStats).length === 0 ? (
+              <p className="text-gray-400">Aucune donnée.</p>
+            ) : (
+              Object.entries(workflowStats).map(([status, count]) => (
+                <p key={status} className="text-gray-600">{status}: {count}</p>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Barre d'outils */}
       <div className="flex items-center justify-between">
         <span className="text-xs bf-text-muted">

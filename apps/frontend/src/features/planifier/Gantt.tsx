@@ -23,6 +23,14 @@ type TaskNode = {
 
 export type GanttMode = "normal" | "simplifie"
 
+export interface ResourceConflict {
+  assignee: string
+  taskA: string
+  taskB: string
+  overlapStart: string
+  overlapEnd: string
+}
+
 const initialTasks: TaskNode[] = [
   {
     id: 1,
@@ -64,7 +72,13 @@ function dayDiff(from: Date, to: Date): number {
   return Math.max(Math.ceil(ms / (1000 * 60 * 60 * 24)), 0)
 }
 
-export function Gantt({ mode = "normal" }: { mode?: GanttMode }) {
+export function Gantt({
+  mode = "normal",
+  onConflictsChange,
+}: {
+  mode?: GanttMode
+  onConflictsChange?: (conflicts: ResourceConflict[]) => void
+}) {
   const [tasks, setTasks] = useState<TaskNode[]>(initialTasks)
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [parentForNewTask, setParentForNewTask] = useState<number | null>(null)
@@ -116,6 +130,47 @@ export function Gantt({ mode = "normal" }: { mode?: GanttMode }) {
       }
     })
   }, [flatTasks])
+
+  const resourceConflicts = useMemo<ResourceConflict[]>(() => {
+    const conflicts: ResourceConflict[] = []
+    const seen = new Set<string>()
+
+    for (let i = 0; i < flatTasks.length; i += 1) {
+      for (let j = i + 1; j < flatTasks.length; j += 1) {
+        const a = flatTasks[i]
+        const b = flatTasks[j]
+        const shared = a.assignees.filter((assignee) => b.assignees.includes(assignee))
+        if (shared.length === 0) continue
+
+        const aStart = new Date(a.start)
+        const aEnd = new Date(a.end)
+        const bStart = new Date(b.start)
+        const bEnd = new Date(b.end)
+        const overlapStart = new Date(Math.max(aStart.getTime(), bStart.getTime()))
+        const overlapEnd = new Date(Math.min(aEnd.getTime(), bEnd.getTime()))
+        if (overlapStart > overlapEnd) continue
+
+        shared.forEach((assignee) => {
+          const key = [assignee, a.id, b.id].join('|')
+          if (seen.has(key)) return
+          seen.add(key)
+          conflicts.push({
+            assignee,
+            taskA: a.name,
+            taskB: b.name,
+            overlapStart: overlapStart.toISOString().slice(0, 10),
+            overlapEnd: overlapEnd.toISOString().slice(0, 10),
+          })
+        })
+      }
+    }
+
+    return conflicts
+  }, [flatTasks])
+
+  React.useEffect(() => {
+    onConflictsChange?.(resourceConflicts)
+  }, [onConflictsChange, resourceConflicts])
 
   const onSubmit = (values: TaskForm) => {
     const assignees = values.assigneesInput

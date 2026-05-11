@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SupplierList } from './SupplierList';
 import { PurchaseOrderList } from './PurchaseOrderList';
@@ -7,6 +7,8 @@ import { usePurchaseOrders, useDeliveries } from '../hooks/useProcurement';
 import { ModuleLayout } from '@/components/layout/ModuleLayout';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { usePermission } from '@/app/providers/PermissionProvider';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 
 type Tab = 'orders' | 'deliveries' | 'suppliers';
 
@@ -25,6 +27,7 @@ export function ApprovisionDashboard({ projectId }: Props) {
   const { data: orders = [] } = usePurchaseOrders(projectId);
   const { data: deliveries = [] } = useDeliveries(projectId);
   const { can } = usePermission();
+  const queryClient = useQueryClient();
 
   const lateOrders = orders.filter((order) => {
     if (!order.expected_delivery_at || order.status === 'delivered') return false;
@@ -33,6 +36,42 @@ export function ApprovisionDashboard({ projectId }: Props) {
 
   const deliveredOrders = orders.filter((order) => order.status === 'delivered').length;
   const openOrders = Math.max(orders.length - deliveredOrders, 0);
+
+  const lateOrderList = useMemo(
+    () => orders.filter((order) => {
+      if (!order.expected_delivery_at || order.status === 'delivered') return false;
+      return new Date(order.expected_delivery_at) < new Date();
+    }),
+    [orders]
+  );
+
+  const stockBalance = useMemo(() => {
+    const deliveredCount = deliveries.length;
+    const expectedCount = openOrders;
+    const balance = deliveredCount - expectedCount;
+    return {
+      deliveredCount,
+      expectedCount,
+      balance,
+      trend: balance >= 0 ? 'stable' : 'tension',
+    };
+  }, [deliveries.length, openOrders]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`procurement-live-${projectId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_orders', filter: `project_id=eq.${projectId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries', filter: `project_id=eq.${projectId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['deliveries', projectId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, queryClient]);
 
   return (
     <ModuleLayout
@@ -73,6 +112,21 @@ export function ApprovisionDashboard({ projectId }: Props) {
       }
     >
       <div className="space-y-3">
+        <div className="bf-card-soft p-3">
+          <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Alertes commandes en retard</p>
+          {lateOrderList.length === 0 ? (
+            <p className="text-sm text-green-700">Aucune commande en retard.</p>
+          ) : (
+            <div className="space-y-1 text-sm">
+              {lateOrderList.slice(0, 5).map((order) => (
+                <p key={order.id} className="text-red-700">
+                  {order.reference} en retard depuis le {new Date(order.expected_delivery_at as string).toLocaleDateString('fr-FR')}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-3 md:grid-cols-3">
           <div className="bf-card-soft p-3">
             <p className="text-xs uppercase font-semibold bf-text-muted mb-1">Commandes livrees</p>
@@ -85,6 +139,27 @@ export function ApprovisionDashboard({ projectId }: Props) {
           <div className="bf-card-soft p-3">
             <p className="text-xs uppercase font-semibold bf-text-muted mb-1">Commandes en retard</p>
             <p className="text-2xl font-black text-red-700">{lateOrders}</p>
+          </div>
+        </div>
+
+        <div className="bf-card-soft p-3">
+          <p className="text-xs uppercase font-semibold bf-text-muted mb-1">Stocks estimés temps réel</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div>
+              <p className="bf-text-muted">Articles reçus</p>
+              <p className="text-xl font-black bf-text-primary">{stockBalance.deliveredCount}</p>
+            </div>
+            <div>
+              <p className="bf-text-muted">Attendus</p>
+              <p className="text-xl font-black bf-text-primary">{stockBalance.expectedCount}</p>
+            </div>
+            <div>
+              <p className="bf-text-muted">Balance</p>
+              <p className={`text-xl font-black ${stockBalance.balance >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {stockBalance.balance >= 0 ? '+' : ''}{stockBalance.balance}
+              </p>
+              <p className="text-xs bf-text-muted">Etat: {stockBalance.trend === 'stable' ? 'stable' : 'sous tension'}</p>
+            </div>
           </div>
         </div>
 

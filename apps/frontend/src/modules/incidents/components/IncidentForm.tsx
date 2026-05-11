@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { useCreateIncident } from '../hooks/useCreateIncident';
 import type { CreateIncidentPayload, IncidentSeverity } from '../types';
+import { uploadAttachmentToSupabase } from '@/modules/approvisionnement/services/uploadAttachmentToSupabase';
+import { supabase } from '@/lib/supabase';
 
 interface IncidentFormProps {
   projectId: string;
@@ -12,6 +14,7 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<IncidentSeverity>('medium');
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const { mutate, isPending, isError } = useCreateIncident();
 
@@ -27,10 +30,40 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
     };
 
     mutate(payload, {
-      onSuccess: () => {
+      onSuccess: async (result: any) => {
+        const incidentId = result?.data?.id as string | undefined;
+
+        if (incidentId && photos.length > 0) {
+          for (const photo of photos) {
+            try {
+              const path = await uploadAttachmentToSupabase(photo, projectId, 'incident');
+              const { data: doc, error: docError } = await supabase
+                .from('documents')
+                .insert({
+                  project_id: projectId,
+                  title: `INC-${incidentId} :: ${photo.name}`,
+                  category: 'incident_attachment',
+                })
+                .select('id')
+                .single();
+              if (docError || !doc) continue;
+
+              await supabase.from('document_versions').insert({
+                document_id: doc.id,
+                file_url: path,
+                is_bpe: false,
+                version_label: 'v1',
+              });
+            } catch {
+              // Le formulaire reste valide même si une photo échoue à l'envoi.
+            }
+          }
+        }
+
         setTitle('');
         setDescription('');
         setSeverity('medium');
+        setPhotos([]);
         onSuccess?.();
       },
     });
@@ -73,6 +106,20 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
           <option value="high">Haute</option>
           <option value="critical">Critique</option>
         </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Photos incident</label>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={(e) => setPhotos(Array.from(e.target.files ?? []))}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+        />
+        {photos.length > 0 ? (
+          <p className="text-xs text-gray-500 mt-1">{photos.length} photo(s) seront jointes à l'incident</p>
+        ) : null}
       </div>
 
       {isError && (

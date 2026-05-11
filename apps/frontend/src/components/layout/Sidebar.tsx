@@ -14,7 +14,7 @@ export function Sidebar() {
   return (
     <nav className="hidden md:flex items-center gap-2 mb-6 flex-wrap">
       {can('module:dashboard')      && <NavLink to="/dashboard"      className={({ isActive }) => viewLinkClass(isActive)}>Tableau de bord</NavLink>}
-      {can('module:piloter')        && <NavLink to="/taches"          className={({ isActive }) => viewLinkClass(isActive)}>Taches</NavLink>}
+      {can('module:piloter')        && <NavLink to="/taches"          className={({ isActive }) => viewLinkClass(isActive)}>Tâches</NavLink>}
       {can('module:planifier')      && <NavLink to="/planifier"       className={({ isActive }) => viewLinkClass(isActive)}>Planning</NavLink>}
       {can('module:executer')       && <NavLink to="/documents"       className={({ isActive }) => viewLinkClass(isActive)}>Documents</NavLink>}
       {can('module:equipe')         && <NavLink to="/equipe"          className={({ isActive }) => viewLinkClass(isActive)}>Equipe</NavLink>}

@@ -30,6 +30,7 @@ const ConflictModal = React.lazy(() => import("./components/ui/ConflictModal").t
 const ExecutePage = React.lazy(() => import("./features/executer/ExecutePage").then((module) => ({ default: module.ExecutePage })));
 const Planifier = React.lazy(() => import("./features/planifier/Planifier").then((module) => ({ default: module.Planifier })));
 const Piloter = React.lazy(() => import("./features/piloter/Piloter").then((module) => ({ default: module.Piloter })));
+const Taches = React.lazy(() => import("./features/taches/Taches").then((module) => ({ default: module.Taches })));
 const Equipe = React.lazy(() => import("./modules/chantier/components/Equipe").then((module) => ({ default: module.Equipe })));
 const ApprovisionDashboard = React.lazy(() => import("./modules/approvisionnement/components/ApprovisionDashboard").then((module) => ({ default: module.ApprovisionDashboard })));
 const FinanceDashboard = React.lazy(() => import("./modules/finance/components/FinanceDashboard").then((module) => ({ default: module.FinanceDashboard })));
@@ -41,7 +42,6 @@ const CommercialDashboard = React.lazy(() => import("./modules/commercial/compon
 const KPIDashboard = React.lazy(() => import("./modules/kpi/components/KPIDashboard").then((module) => ({ default: module.KPIDashboard })));
 const TimeTrackingDashboard = React.lazy(() => import("./modules/time-tracking/components/TimeTrackingDashboard").then((module) => ({ default: module.TimeTrackingDashboard })));
 const AccountSettings = React.lazy(() => import("./modules/settings/components/AccountSettings").then((module) => ({ default: module.AccountSettings })));
-const TerrainPage = React.lazy(() => import("./modules/terrain/pages/TerrainPage").then((module) => ({ default: module.TerrainPage })));
 const AuditTrailPage = React.lazy(() => import("./modules/audit/pages/AuditTrailPage").then((module) => ({ default: module.AuditTrailPage })));
 const CreateProjectPanel = React.lazy(() => import("./components/shared/CreateProjectPanel").then((module) => ({ default: module.CreateProjectPanel })));
 
@@ -280,6 +280,24 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
+
+                <Route path="/taches" element={(
+                <ProtectedRoute permission="module:piloter">
+                <motion.section
+                  key="taches"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                  className="surface-panel p-5 md:p-6"
+                >
+                  <Suspense fallback={<SectionLoader label="Chargement des tâches..." />}>
+                    <Taches />
+                  </Suspense>
+                </motion.section>
+                </ProtectedRoute>
+                )} />
+
                 <Route path="/piloter" element={(
                 <ProtectedRoute permission="module:piloter">
                 <motion.section
@@ -296,8 +314,6 @@ function App() {
                 </motion.section>
                 </ProtectedRoute>
                 )} />
-
-                <Route path="/taches" element={<Navigate to="/piloter" replace />} />
 
                 <Route path="/equipe" element={(
                 <ProtectedRoute permission="module:equipe">
@@ -348,20 +364,7 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
-                <Route path="/incidents" element={(
-                <motion.section
-                  key="incidents"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.22 }}
-                  className="surface-panel p-5 md:p-6"
-                >
-                  <Suspense fallback={<SectionLoader label="Chargement incidents..." />}>
-                    <IncidentsPage projectId={resolvedProjectId} />
-                  </Suspense>
-                </motion.section>
-                )} />
+                <Route path="/incidents" element={<Navigate to="/retour-chantier" replace />} />
 
                 <Route path="/rh-securite" element={(
                 <ProtectedRoute permission="module:rh">
@@ -459,15 +462,24 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
-                <Route path="/terrain" element={(
+                <Route path="/terrain" element={<Navigate to="/retour-chantier" replace />} />
+
+                <Route path="/retour-chantier" element={(
                 <ProtectedRoute permission="module:terrain">
-                  <Suspense fallback={<div className="fixed inset-0 bg-neutral-950 flex items-center justify-center text-white text-sm">Chargement…</div>}>
-                    <TerrainPage projectId={resolvedProjectId} />
+                <motion.section
+                  key="retour-chantier"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                  className="surface-panel p-5 md:p-6"
+                >
+                  <Suspense fallback={<SectionLoader label="Chargement retours chantier..." />}>
+                    <IncidentsPage projectId={resolvedProjectId} />
                   </Suspense>
+                </motion.section>
                 </ProtectedRoute>
                 )} />
-
-                <Route path="/retour-chantier" element={<Navigate to="/terrain" replace />} />
 
                 <Route path="/audit" element={(
                 <ProtectedRoute permission="module:audit">
