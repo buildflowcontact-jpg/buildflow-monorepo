@@ -27,9 +27,10 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
 
 interface Props {
   projectId: string;
+  view?: 'to_order' | 'in_progress' | 'delivered';
 }
 
-export function PurchaseOrderList({ projectId }: Props) {
+export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
   const { data: orders = [], isLoading } = usePurchaseOrders(projectId);
   const { data: suppliers = [] } = useSuppliers(projectId);
   const [existingOrderDocs, setExistingOrderDocs] = useState<Record<string, string[]>>({});
@@ -133,10 +134,19 @@ export function PurchaseOrderList({ projectId }: Props) {
     return <div className="text-sm text-gray-500 py-4">Chargement commandes...</div>;
   }
 
+  const filteredOrders = orders.filter((order) => {
+    const status = order.status ?? 'draft';
+    if (view === 'to_order') return status === 'draft';
+    if (view === 'in_progress') return status === 'sent' || status === 'confirmed';
+    return status === 'delivered';
+  });
+
+  const viewLabel = view === 'to_order' ? 'Commandes a passer' : view === 'in_progress' ? 'Commandes en cours' : 'Commandes livrees';
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-700">Commandes ({orders.length})</h3>
+        <h3 className="font-semibold text-gray-700">{viewLabel} ({filteredOrders.length})</h3>
         <button
           onClick={() => setShowForm(!showForm)}
           className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
@@ -243,10 +253,10 @@ export function PurchaseOrderList({ projectId }: Props) {
       )}
 
       <div className="divide-y">
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <p className="text-sm text-gray-400 py-2">Aucune commande enregistrée.</p>
         ) : (
-          orders.map((order: PurchaseOrderRow) => {
+          filteredOrders.map((order: PurchaseOrderRow) => {
             const supplierName = suppliers.find((s) => s.id === order.supplier_id)?.name;
             const statusInfo = STATUS_LABELS[order.status ?? ''] ?? { label: order.status, className: 'bg-gray-100 text-gray-600' };
             const transitions = STATUS_TRANSITIONS[order.status ?? ''] ?? [];

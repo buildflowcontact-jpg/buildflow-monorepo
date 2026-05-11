@@ -7,15 +7,23 @@ import { useToast } from "@/ui/ToastProvider"
 import { supabase } from "@/lib/supabase"
 import { useWorkers, useCreateWorker, useUpdateWorker, useDeleteWorker } from "@/modules/rh-securite/hooks/useRHSecurity"
 import { usePermissions } from "@/hooks/usePermissions"
+import { uploadAttachmentToSupabase } from "@/modules/approvisionnement/services/uploadAttachmentToSupabase"
 
 const memberSchema = z.object({
-  firstName: z.string().min(2, "Prénom requis"),
+  firstName: z.string().min(2, "Prenom requis"),
   lastName: z.string().min(2, "Nom requis"),
   company: z.string().min(2, "Entreprise requise"),
-  domain: z.string().min(2, "Domaine d'activité requis"),
-  projectRole: z.string().min(2, "Rôle projet requis"),
+  domain: z.string().min(2, "Domaine d'activite requis"),
 })
 type MemberForm = z.infer<typeof memberSchema>
+
+interface MemberCredential {
+  id: string
+  label: string
+  type: 'habilitation' | 'certification'
+  expiresAt: string
+  docs: Array<{ id: string; name: string; path: string }>
+}
 
 export interface EquipeProps {
   projectId: string
@@ -24,17 +32,19 @@ export interface EquipeProps {
 
 export function Equipe({ projectId, projectName }: EquipeProps) {
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false)
-  const [editingId, setEditingId] = React.useState<string | null>(null)
-  const [editValues, setEditValues] = React.useState<{ fullName: string; company: string; role: string }>({ fullName: '', company: '', role: '' })
-  const [certByWorker, setCertByWorker] = React.useState<Record<string, Array<{ id: string; label: string; expiresAt: string }>>>({})
-  const [certWorkerId, setCertWorkerId] = React.useState('')
-  const [certLabel, setCertLabel] = React.useState('')
-  const [certExpiry, setCertExpiry] = React.useState('')
-  const [messageText, setMessageText] = React.useState('')
-  const [messages, setMessages] = React.useState<Array<{ id: string; text: string; createdAt: string }>>([])
+  const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState<'infos' | 'credentials'>('infos')
+  const [credentialsByWorker, setCredentialsByWorker] = React.useState<Record<string, MemberCredential[]>>({})
+
+  const [credentialLabel, setCredentialLabel] = React.useState('')
+  const [credentialType, setCredentialType] = React.useState<'habilitation' | 'certification'>('habilitation')
+  const [credentialExpiry, setCredentialExpiry] = React.useState('')
+  const [credentialFiles, setCredentialFiles] = React.useState<File[]>([])
+
   const form = useZodForm(memberSchema, {
-    defaultValues: { firstName: "", lastName: "", company: "", domain: "", projectRole: "" }
+    defaultValues: { firstName: "", lastName: "", company: "", domain: "" }
   })
+
   const { data: membres = [], isLoading } = useWorkers(projectId)
   const createWorker = useCreateWorker()
   const updateWorker = useUpdateWorker()
@@ -44,55 +54,12 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
   const canInvite = can('team:invite')
   const canRemove = can('team:remove')
 
-  const companyStats = React.useMemo(() => {
-    const counts: Record<string, number> = {}
-    membres.forEach((worker) => {
-      const key = worker.company || 'Non renseignée'
-      counts[key] = (counts[key] ?? 0) + 1
-    })
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5)
-  }, [membres])
-
-  const domainStats = React.useMemo(() => {
-    const counts: Record<string, number> = {}
-    membres.forEach((worker) => {
-      const key = worker.role || 'Non renseigné'
-      counts[key] = (counts[key] ?? 0) + 1
-    })
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5)
-  }, [membres])
-
-  const maxCompany = Math.max(...companyStats.map((entry) => entry[1]), 1)
-  const maxDomain = Math.max(...domainStats.map((entry) => entry[1]), 1)
-
-  const certAlerts = React.useMemo(() => {
-    const now = new Date()
-    const alertDate = new Date()
-    alertDate.setDate(alertDate.getDate() + 30)
-    const alerts: Array<{ workerName: string; label: string; expiresAt: string; isExpired: boolean }> = []
-
-    membres.forEach((worker) => {
-      const certs = certByWorker[worker.id] ?? []
-      certs.forEach((cert) => {
-        const expires = new Date(cert.expiresAt)
-        if (expires <= alertDate) {
-          alerts.push({
-            workerName: worker.full_name,
-            label: cert.label,
-            expiresAt: cert.expiresAt,
-            isExpired: expires < now,
-          })
-        }
-      })
-    })
-
-    return alerts.sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
-  }, [certByWorker, membres])
+  const selectedMember = membres.find((member) => member.id === selectedMemberId) ?? null
+  const selectedCredentials = selectedMemberId ? (credentialsByWorker[selectedMemberId] ?? []) : []
 
   const onSubmit = async (values: MemberForm) => {
     const fullName = `${values.firstName.trim()} ${values.lastName.trim()}`
 
-    // Recherche de l'utilisateur existant (même identité) dans la base des collaborateurs.
     const { data: existingWorkers, error: searchError } = await supabase
       .from('workers')
       .select('id, full_name, company')
@@ -119,11 +86,11 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
         })
 
       if (notifError) {
-        showToast?.('Collaborateur trouvé, mais notification impossible à créer', 'error')
+        showToast?.('Collaborateur trouve, mais notification impossible a creer', 'error')
         return
       }
 
-      showToast?.(`Invitation envoyée à ${fullName} pour rejoindre ${projectName}`, 'success')
+      showToast?.(`Invitation envoyee a ${fullName} pour rejoindre ${projectName}`, 'success')
       form.reset()
       return
     }
@@ -131,38 +98,75 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
     await createWorker.mutateAsync({
       projectId,
       fullName,
-      role: `${values.projectRole.trim()} | ${values.domain.trim()} (virtuel)`,
+      role: values.domain.trim(),
       company: values.company.trim(),
     })
 
-    showToast?.(`Profil virtuel créé pour ${fullName}`, 'success')
+    showToast?.(`Profil virtuel cree pour ${fullName}`, 'success')
     form.reset()
   }
 
-  const addCertification = () => {
-    if (!certWorkerId || !certLabel.trim() || !certExpiry) return
-    setCertByWorker((prev) => ({
-      ...prev,
-      [certWorkerId]: [
-        ...(prev[certWorkerId] ?? []),
-        { id: `${Date.now()}`, label: certLabel.trim(), expiresAt: certExpiry },
-      ],
-    }))
-    setCertLabel('')
-    setCertExpiry('')
+  const openMemberModal = (memberId: string) => {
+    setSelectedMemberId(memberId)
+    setActiveTab('infos')
   }
 
-  const sendInternalMessage = () => {
-    if (!messageText.trim()) return
-    setMessages((prev) => [
-      {
-        id: `${Date.now()}`,
-        text: messageText.trim(),
-        createdAt: new Date().toLocaleString('fr-FR'),
-      },
+  const closeMemberModal = () => {
+    setSelectedMemberId(null)
+    setCredentialLabel('')
+    setCredentialExpiry('')
+    setCredentialFiles([])
+  }
+
+  const addCredential = async () => {
+    if (!selectedMemberId || !credentialLabel.trim() || !credentialExpiry) return
+
+    const docs: Array<{ id: string; name: string; path: string }> = []
+    for (const file of credentialFiles) {
+      try {
+        const path = await uploadAttachmentToSupabase(file, projectId, 'document')
+        docs.push({ id: `${Date.now()}-${file.name}`, name: file.name, path })
+      } catch {
+        showToast?.(`Echec upload: ${file.name}`, 'error')
+      }
+    }
+
+    const nextCredential: MemberCredential = {
+      id: `cred-${Date.now()}`,
+      label: credentialLabel.trim(),
+      type: credentialType,
+      expiresAt: credentialExpiry,
+      docs,
+    }
+
+    setCredentialsByWorker((prev) => ({
       ...prev,
-    ].slice(0, 20))
-    setMessageText('')
+      [selectedMemberId]: [nextCredential, ...(prev[selectedMemberId] ?? [])],
+    }))
+
+    setCredentialLabel('')
+    setCredentialExpiry('')
+    setCredentialFiles([])
+    showToast?.('Habilitation / certification ajoutee', 'success')
+  }
+
+  const removeCredential = (credentialId: string) => {
+    if (!selectedMemberId) return
+    setCredentialsByWorker((prev) => ({
+      ...prev,
+      [selectedMemberId]: (prev[selectedMemberId] ?? []).filter((credential) => credential.id !== credentialId),
+    }))
+  }
+
+  const removeCredentialDoc = (credentialId: string, docId: string) => {
+    if (!selectedMemberId) return
+    setCredentialsByWorker((prev) => ({
+      ...prev,
+      [selectedMemberId]: (prev[selectedMemberId] ?? []).map((credential) => {
+        if (credential.id !== credentialId) return credential
+        return { ...credential, docs: credential.docs.filter((doc) => doc.id !== docId) }
+      }),
+    }))
   }
 
   return (
@@ -170,218 +174,82 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
       <div className="flex items-center justify-between gap-3">
         <h3 className="bf-text-primary text-2xl font-black tracking-tight">Équipe</h3>
         {canInvite && (
-        <Button
-          type="button"
-          onClick={() => setIsAddFormOpen((open) => !open)}
-          aria-expanded={isAddFormOpen}
-          aria-controls="add-person-form"
-        >
-          {isAddFormOpen ? "Fermer" : "Ajouter une personne"}
-        </Button>
+          <Button type="button" onClick={() => setIsAddFormOpen((open) => !open)} aria-expanded={isAddFormOpen} aria-controls="add-person-form">
+            {isAddFormOpen ? "Fermer" : "Ajouter une personne"}
+          </Button>
         )}
       </div>
 
       {isAddFormOpen && canInvite ? (
-      <form id="add-person-form" onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="Ajouter un membre">
-        <div className="w-full sm:max-w-sm">
-          <label htmlFor="firstName" className="bf-text-primary block text-sm font-semibold">Prénom</label>
-          <input
-            id="firstName"
-            type="text"
-            {...form.register("firstName")}
-            className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none"
-            required
-          />
-          {form.formState.errors.firstName && <p className="text-red-600 text-xs mt-1">{form.formState.errors.firstName.message}</p>}
-        </div>
-        <div className="w-full sm:max-w-sm">
-          <label htmlFor="lastName" className="bf-text-primary block text-sm font-semibold">Nom</label>
-          <input
-            id="lastName"
-            type="text"
-            {...form.register("lastName")}
-            className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none"
-            required
-          />
-          {form.formState.errors.lastName && <p className="text-red-600 text-xs mt-1">{form.formState.errors.lastName.message}</p>}
-        </div>
-        <div className="w-full sm:max-w-sm">
-          <label htmlFor="company" className="bf-text-primary block text-sm font-semibold">Entreprise</label>
-          <input
-            id="company"
-            type="text"
-            {...form.register("company")}
-            className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none"
-            required
-          />
-          {form.formState.errors.company && <p className="text-red-600 text-xs mt-1">{form.formState.errors.company.message}</p>}
-        </div>
-        <div className="w-full sm:max-w-sm">
-          <label htmlFor="domain" className="bf-text-primary block text-sm font-semibold">Domaine d'activité</label>
-          <input
-            id="domain"
-            type="text"
-            {...form.register("domain")}
-            className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none"
-            required
-          />
-          {form.formState.errors.domain && <p className="text-red-600 text-xs mt-1">{form.formState.errors.domain.message}</p>}
-        </div>
-        <div className="w-full sm:max-w-sm">
-          <label htmlFor="projectRole" className="bf-text-primary block text-sm font-semibold">Rôle projet</label>
-          <input
-            id="projectRole"
-            type="text"
-            {...form.register("projectRole")}
-            className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none"
-            placeholder="Ex: Chef d'équipe"
-            required
-          />
-          {form.formState.errors.projectRole && <p className="text-red-600 text-xs mt-1">{form.formState.errors.projectRole.message}</p>}
-        </div>
-        <div className="md:col-span-2">
-          <p className="text-xs bf-text-muted mb-2">
-            Si le collaborateur existe déjà, une notification d'invitation est envoyée. Sinon, un profil virtuel est créé.
-          </p>
-          <Button type="submit" disabled={form.formState.isSubmitting || createWorker.isPending} className="rounded-xl">
-            {(form.formState.isSubmitting || createWorker.isPending) ? <Spinner size={16} /> : "Ajouter / Inviter"}
-          </Button>
-        </div>
-      </form>
+        <form id="add-person-form" onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="Ajouter un membre">
+          <div className="w-full sm:max-w-sm">
+            <label htmlFor="firstName" className="bf-text-primary block text-sm font-semibold">Prénom</label>
+            <input id="firstName" type="text" {...form.register("firstName")} className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none" required />
+            {form.formState.errors.firstName && <p className="text-red-600 text-xs mt-1">{form.formState.errors.firstName.message}</p>}
+          </div>
+          <div className="w-full sm:max-w-sm">
+            <label htmlFor="lastName" className="bf-text-primary block text-sm font-semibold">Nom</label>
+            <input id="lastName" type="text" {...form.register("lastName")} className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none" required />
+            {form.formState.errors.lastName && <p className="text-red-600 text-xs mt-1">{form.formState.errors.lastName.message}</p>}
+          </div>
+          <div className="w-full sm:max-w-sm">
+            <label htmlFor="company" className="bf-text-primary block text-sm font-semibold">Entreprise</label>
+            <input id="company" type="text" {...form.register("company")} className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none" required />
+            {form.formState.errors.company && <p className="text-red-600 text-xs mt-1">{form.formState.errors.company.message}</p>}
+          </div>
+          <div className="w-full sm:max-w-sm">
+            <label htmlFor="domain" className="bf-text-primary block text-sm font-semibold">Domaine d'activité</label>
+            <input id="domain" type="text" {...form.register("domain")} className="bf-input mt-1.5 block w-full rounded-xl px-3.5 py-2.5 outline-none" required />
+            {form.formState.errors.domain && <p className="text-red-600 text-xs mt-1">{form.formState.errors.domain.message}</p>}
+          </div>
+          <div className="md:col-span-2">
+            <Button type="submit" disabled={form.formState.isSubmitting || createWorker.isPending} className="rounded-xl">
+              {(form.formState.isSubmitting || createWorker.isPending) ? <Spinner size={16} /> : "Ajouter / Inviter"}
+            </Button>
+          </div>
+        </form>
       ) : null}
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="bf-card-soft p-4">
-          <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Répartition par entreprise</p>
-          <div className="space-y-2">
-            {companyStats.length ? companyStats.map(([company, count]) => {
-              const width = Math.round((count / maxCompany) * 100)
-              return (
-                <div key={company}>
-                  <div className="flex items-center justify-between text-xs"><span className="truncate max-w-[220px]">{company}</span><span>{count}</span></div>
-                  <div className="h-1.5 rounded bg-slate-100 overflow-hidden"><div className="h-full bg-indigo-500" style={{ width: `${width}%` }} /></div>
-                </div>
-              )
-            }) : <p className="text-xs bf-text-muted">Aucune donnée.</p>}
-          </div>
-        </div>
-
-        <div className="bf-card-soft p-4">
-          <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Répartition par domaine</p>
-          <div className="space-y-2">
-            {domainStats.length ? domainStats.map(([domain, count]) => {
-              const width = Math.round((count / maxDomain) * 100)
-              return (
-                <div key={domain}>
-                  <div className="flex items-center justify-between text-xs"><span className="truncate max-w-[220px]">{domain}</span><span>{count}</span></div>
-                  <div className="h-1.5 rounded bg-slate-100 overflow-hidden"><div className="h-full bg-cyan-500" style={{ width: `${width}%` }} /></div>
-                </div>
-              )
-            }) : <p className="text-xs bf-text-muted">Aucune donnée.</p>}
-          </div>
-        </div>
-      </div>
 
       <div className="space-y-2">
         <p className="text-sm font-semibold bf-text-primary">Liste des personnes liées au projet</p>
         <ul className="bf-card-soft divide-y divide-slate-200">
-        {isLoading ? (
-          <li className="bf-text-muted px-4 py-3">Chargement...</li>
-        ) : membres.length ? membres.map((m) => (
-          <li key={m.id} className="px-4 py-3 space-y-1">
-            {editingId === m.id ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  aria-label="Nom complet"
-                  value={editValues.fullName}
-                  onChange={(e) => setEditValues({ ...editValues, fullName: e.target.value })}
-                  className="bf-input rounded-xl px-3 py-2 text-sm"
-                />
-                <input
-                  aria-label="Entreprise"
-                  value={editValues.company}
-                  onChange={(e) => setEditValues({ ...editValues, company: e.target.value })}
-                  className="bf-input rounded-xl px-3 py-2 text-sm"
-                />
-                <input
-                  aria-label="Rôle / domaine"
-                  value={editValues.role}
-                  onChange={(e) => setEditValues({ ...editValues, role: e.target.value })}
-                  className="bf-input rounded-xl px-3 py-2 text-sm"
-                />
-                <div className="sm:col-span-3 flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={updateWorker.isPending}
-                    onClick={async () => {
-                      try {
-                        await updateWorker.mutateAsync({ workerId: m.id, projectId, fullName: editValues.fullName, company: editValues.company, role: editValues.role })
-                        showToast?.('Membre mis à jour', 'success')
-                        setEditingId(null)
-                      } catch {
-                        showToast?.('Impossible de mettre à jour le membre', 'error')
-                      }
-                    }}
-                  >
-                    {updateWorker.isPending ? <Spinner size={14} /> : 'Enregistrer'}
-                  </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(null)}>Annuler</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="bf-text-primary font-medium">{m.full_name}</span>
-                  {m.company ? <span className="text-xs bf-text-muted ml-2">({m.company})</span> : null}
-                  {m.role ? <div className="text-xs bf-text-muted">{m.role}</div> : null}
-                  <div className="mt-1 flex gap-2 items-center">
-                    <span className="text-[11px] uppercase bf-text-muted">Rôle projet</span>
-                    <select
-                      className="bf-input text-xs py-1"
-                      value={m.role ?? ''}
-                      onChange={async (e) => {
-                        try {
-                          await updateWorker.mutateAsync({ workerId: m.id, projectId, fullName: m.full_name, company: m.company ?? '', role: e.target.value })
-                          showToast?.('Rôle projet mis à jour', 'success')
-                        } catch {
-                          showToast?.('Mise à jour du rôle impossible', 'error')
-                        }
-                      }}
-                    >
-                      <option value={m.role ?? ''}>{m.role ?? 'Définir un rôle'}</option>
-                      <option value="Chef d'équipe">Chef d'équipe</option>
-                      <option value="Conducteur de travaux">Conducteur de travaux</option>
-                      <option value="Responsable sécurité">Responsable sécurité</option>
-                      <option value="Technicien">Technicien</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  {canInvite && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditingId(m.id)
-                      setEditValues({ fullName: m.full_name ?? '', company: m.company ?? '', role: m.role ?? '' })
-                    }}
-                  >
-                    Modifier
-                  </Button>
-                  )}
-                  {canRemove && (
+          {isLoading ? (
+            <li className="bf-text-muted px-4 py-3">Chargement...</li>
+          ) : membres.length ? membres.map((member) => (
+            <li key={member.id} className="px-4 py-3 flex items-center justify-between gap-2">
+              <button type="button" onClick={() => openMemberModal(member.id)} className="text-left flex-1 hover:opacity-80">
+                <p className="bf-text-primary font-medium">{member.full_name}</p>
+                <p className="text-xs bf-text-muted">{member.company ?? 'Entreprise non renseignee'} | {member.role ?? 'Role non renseigne'}</p>
+              </button>
+              <div className="flex gap-1 shrink-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    const role = prompt('Nouveau role pour ce membre ?', member.role ?? '')
+                    if (role === null) return
+                    try {
+                      await updateWorker.mutateAsync({ workerId: member.id, projectId, fullName: member.full_name ?? '', company: member.company ?? '', role })
+                      showToast?.('Role mis a jour', 'success')
+                    } catch {
+                      showToast?.('Mise a jour impossible', 'error')
+                    }
+                  }}
+                >
+                  Role
+                </Button>
+                {canRemove && (
                   <Button
                     type="button"
                     variant="destructive"
                     size="sm"
                     disabled={deleteWorker.isPending}
                     onClick={async () => {
-                      if (!confirm(`Retirer ${m.full_name} du projet ?`)) return
+                      if (!confirm(`Retirer ${member.full_name} du projet ?`)) return
                       try {
-                        await deleteWorker.mutateAsync({ workerId: m.id, projectId })
-                        showToast?.(`${m.full_name} retiré du projet`, 'success')
+                        await deleteWorker.mutateAsync({ workerId: member.id, projectId })
+                        showToast?.(`${member.full_name} retire du projet`, 'success')
                       } catch {
                         showToast?.('Impossible de supprimer ce membre', 'error')
                       }
@@ -389,61 +257,93 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
                   >
                     Retirer
                   </Button>
+                )}
+              </div>
+            </li>
+          )) : <li className="bf-text-muted px-4 py-3">Aucun membre</li>}
+        </ul>
+      </div>
+
+      {selectedMember ? (
+        <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center px-4" role="dialog" aria-modal="true">
+          <div className="bf-modal w-full max-w-4xl p-5 space-y-4 max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h4 className="bf-text-primary font-black text-xl">{selectedMember.full_name}</h4>
+                <p className="text-sm bf-text-muted">{selectedMember.company ?? 'Entreprise non renseignee'} | {selectedMember.role ?? 'Role non renseigne'}</p>
+              </div>
+              <Button type="button" variant="ghost" onClick={closeMemberModal}>Fermer</Button>
+            </div>
+
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant={activeTab === 'infos' ? 'default' : 'ghost'} onClick={() => setActiveTab('infos')}>Informations</Button>
+              <Button type="button" size="sm" variant={activeTab === 'credentials' ? 'default' : 'ghost'} onClick={() => setActiveTab('credentials')}>
+                Habilitations et certifications
+              </Button>
+            </div>
+
+            {activeTab === 'infos' ? (
+              <div className="bf-card-soft p-4 space-y-1 text-sm">
+                <p><span className="font-semibold">Nom:</span> {selectedMember.full_name}</p>
+                <p><span className="font-semibold">Entreprise:</span> {selectedMember.company ?? 'Non renseignee'}</p>
+                <p><span className="font-semibold">Role:</span> {selectedMember.role ?? 'Non renseigne'}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bf-card-soft p-4 space-y-3">
+                  <h5 className="font-bold bf-text-primary">Ajouter une habilitation / certification</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input className="bf-input" placeholder="Libelle" value={credentialLabel} onChange={(e) => setCredentialLabel(e.target.value)} />
+                    <select className="bf-input" value={credentialType} onChange={(e) => setCredentialType(e.target.value as 'habilitation' | 'certification')}>
+                      <option value="habilitation">Habilitation</option>
+                      <option value="certification">Certification</option>
+                    </select>
+                    <input className="bf-input" type="date" value={credentialExpiry} onChange={(e) => setCredentialExpiry(e.target.value)} />
+                    <input className="bf-input" type="file" multiple onChange={(e) => setCredentialFiles(Array.from(e.target.files ?? []))} />
+                  </div>
+                  <Button type="button" onClick={addCredential}>Ajouter</Button>
+                </div>
+
+                <div className="bf-card-soft p-4 space-y-3">
+                  <h5 className="font-bold bf-text-primary">Liste des habilitations et certifications</h5>
+                  {selectedCredentials.length === 0 ? (
+                    <p className="text-sm bf-text-muted">Aucun element enregistre.</p>
+                  ) : (
+                    selectedCredentials.map((credential) => (
+                      <div key={credential.id} className="rounded-xl border border-slate-200 p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-semibold bf-text-primary">{credential.label}</p>
+                            <p className="text-xs bf-text-muted">{credential.type} | expiration: {new Date(credential.expiresAt).toLocaleDateString('fr-FR')}</p>
+                          </div>
+                          <Button type="button" variant="destructive" size="sm" onClick={() => removeCredential(credential.id)}>Supprimer</Button>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase font-semibold bf-text-muted">Documents lies</p>
+                          {credential.docs.length === 0 ? (
+                            <p className="text-sm bf-text-muted">Aucun document lie.</p>
+                          ) : (
+                            credential.docs.map((doc) => {
+                              const publicUrl = supabase.storage.from('project-media').getPublicUrl(doc.path).data.publicUrl
+                              return (
+                                <div key={doc.id} className="flex items-center justify-between gap-2 text-sm">
+                                  <a href={publicUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{doc.name}</a>
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeCredentialDoc(credential.id, doc.id)}>Supprimer</Button>
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
             )}
-          </li>
-        )) : <li className="bf-text-muted px-4 py-3">Aucun membre</li>}
-        </ul>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bf-card-soft p-4 space-y-3">
-          <h4 className="bf-text-primary font-bold">Habilitations & certifications</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <select className="bf-input" value={certWorkerId} onChange={(e) => setCertWorkerId(e.target.value)}>
-              <option value="">Sélectionner un membre</option>
-              {membres.map((m) => (
-                <option key={m.id} value={m.id}>{m.full_name}</option>
-              ))}
-            </select>
-            <input className="bf-input" value={certLabel} onChange={(e) => setCertLabel(e.target.value)} placeholder="Certification" />
-            <input className="bf-input" type="date" value={certExpiry} onChange={(e) => setCertExpiry(e.target.value)} />
-          </div>
-          <Button type="button" variant="ghost" onClick={addCertification}>Ajouter certification</Button>
-
-          <div className="space-y-1 text-sm">
-            {certAlerts.length === 0 ? (
-              <p className="bf-text-muted">Aucune certification proche d'expiration.</p>
-            ) : certAlerts.map((alert, idx) => (
-              <p key={`${alert.workerName}-${alert.label}-${idx}`} className={alert.isExpired ? 'text-red-700' : 'text-amber-700'}>
-                {alert.workerName} | {alert.label} | expire le {new Date(alert.expiresAt).toLocaleDateString('fr-FR')}
-              </p>
-            ))}
           </div>
         </div>
-
-        <div className="bf-card-soft p-4 space-y-3">
-          <h4 className="bf-text-primary font-bold">Messagerie interne rapide</h4>
-          <div className="flex gap-2">
-            <input
-              className="bf-input"
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Message équipe"
-            />
-            <Button type="button" onClick={sendInternalMessage}>Envoyer</Button>
-          </div>
-          <div className="space-y-1 text-sm">
-            {messages.length === 0 ? (
-              <p className="bf-text-muted">Aucun message interne.</p>
-            ) : messages.map((message) => (
-              <p key={message.id} className="bf-text-muted">{message.createdAt} | {message.text}</p>
-            ))}
-          </div>
-        </div>
-      </div>
+      ) : null}
     </div>
   )
 }

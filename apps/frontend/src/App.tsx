@@ -234,10 +234,8 @@ function App() {
                   transition={{ duration: 0.22 }}
                   className="surface-panel p-5 md:p-6"
                 >
-                  <div className="bf-module-header mb-5">
-                    <h2 className="text-xl font-black bf-text-primary">Vue globale</h2>
-                    <p className="text-sm bf-text-muted">Tous vos projets en un coup d'œil</p>
-                  </div>
+                  <h2 className="bf-text-primary font-black text-2xl mb-1">Tableau de bord</h2>
+                  <p className="bf-text-muted mb-5">Tous vos projets en un coup d'oeil</p>
                   <Suspense fallback={<SectionLoader label="Chargement du tableau de bord..." />}>
                     <GlobalDashboard />
                   </Suspense>

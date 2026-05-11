@@ -71,8 +71,6 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
     }
   }
 
-  if (isLoading) return <div>Chargement des documents...</div>
-
   const filteredDocs = React.useMemo(() => {
     const source = docs ?? []
     const keyword = searchTerm.trim().toLowerCase()
@@ -134,6 +132,8 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
   const signedByList = selectedDoc && selectedDoc.metadata && typeof selectedDoc.metadata === 'object' && Array.isArray((selectedDoc.metadata as any).signedBy)
     ? ((selectedDoc.metadata as any).signedBy as string[])
     : []
+
+  if (isLoading) return <div>Chargement des documents...</div>
 
   return (
     <div className="space-y-4">

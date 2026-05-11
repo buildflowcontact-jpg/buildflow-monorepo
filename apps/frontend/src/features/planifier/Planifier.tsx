@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Gantt, type GanttMode, type ResourceConflict } from './Gantt';
 import { Button } from '@/components/ui/button';
-import { ModuleLayout } from '@/components/layout/ModuleLayout';
 import { downloadCsv, downloadExcel, openPrintPreview } from '@/lib/export';
 
 export function Planifier() {
   const [mode, setMode] = useState<GanttMode>('normal');
   const [conflicts, setConflicts] = useState<ResourceConflict[]>([]);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const exportRows: Array<Array<string | number>> = [
     ['Type', 'Valeur'],
@@ -36,37 +36,39 @@ export function Planifier() {
   };
 
   return (
-    <ModuleLayout
-      title="Planifier"
-      description="Organisez les tâches, dépendances et ressources avec lecture gauche vers action droite."
-      left={
-        <>
-          <h3 className="bf-text-primary font-black tracking-tight">Navigation planning</h3>
-          <div className="space-y-2">
-            <Button type="button" variant={mode === 'simplifie' ? 'default' : 'ghost'} size="sm" onClick={() => setMode('simplifie')} className="w-full justify-start">
-              Vue Gantt simplifie
-            </Button>
-            <Button type="button" variant={mode === 'normal' ? 'default' : 'ghost'} size="sm" onClick={() => setMode('normal')} className="w-full justify-start">
-              Vue Gantt normale
-            </Button>
-          </div>
-          <div className="rounded-xl border border-slate-200 p-3 text-xs bf-text-muted space-y-1">
-            <p>1. Creez une tache principale</p>
-            <p>2. Ajoutez des sous-taches</p>
-            <p>3. Affectez les equipes</p>
-          </div>
-        </>
-      }
-      right={
-        <>
-          <h3 className="bf-text-primary font-black tracking-tight">Actions rapides</h3>
-          <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={handleCsvExport}>Exporter CSV</Button>
-          <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={handleExcelExport}>Exporter Excel</Button>
-          <Button type="button" size="sm" className="w-full justify-start" onClick={handlePdfExport}>Exporter PDF</Button>
-          <p className="text-xs bf-text-muted">Visualisation planning + exports de pilotage documentaire.</p>
-        </>
-      }
-    >
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="bf-text-primary font-black text-2xl mb-1">Planning</h2>
+          <p className="bf-text-muted">Visualisation du diagramme de Gantt interactif.</p>
+        </div>
+        <div className="relative">
+          <Button type="button" onClick={() => setIsExportMenuOpen((v) => !v)}>Exporter</Button>
+          {isExportMenuOpen ? (
+            <div className="absolute right-0 mt-2 z-20 rounded-xl border border-slate-200 bg-white p-2 shadow-lg min-w-[180px]">
+              <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { handleCsvExport(); setIsExportMenuOpen(false); }}>
+                Export CSV
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { handleExcelExport(); setIsExportMenuOpen(false); }}>
+                Export Excel
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { handlePdfExport(); setIsExportMenuOpen(false); }}>
+                Export PDF
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button type="button" variant={mode === 'normal' ? 'default' : 'ghost'} size="sm" onClick={() => setMode('normal')}>
+          Vue normale
+        </Button>
+        <Button type="button" variant={mode === 'simplifie' ? 'default' : 'ghost'} size="sm" onClick={() => setMode('simplifie')}>
+          Vue simplifiee
+        </Button>
+      </div>
+
       {conflicts.length > 0 ? (
         <div className="bf-card-soft p-4 mb-3 border border-amber-200">
           <h3 className="bf-text-primary font-black tracking-tight mb-2">Conflits de ressources détectés</h3>
@@ -82,11 +84,11 @@ export function Planifier() {
 
       <div className="bf-card-soft p-4 md:p-5">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="bf-text-primary font-black tracking-tight">Workspace Gantt</h3>
+          <h3 className="bf-text-primary font-black tracking-tight">Diagramme de Gantt</h3>
           <span className="text-xs bf-text-muted">Mode: {mode === 'normal' ? 'normal' : 'simplifie'}</span>
         </div>
         <Gantt mode={mode} onConflictsChange={setConflicts} />
       </div>
-    </ModuleLayout>
+    </div>
   );
 }

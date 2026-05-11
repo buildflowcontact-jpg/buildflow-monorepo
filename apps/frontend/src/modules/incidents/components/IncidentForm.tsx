@@ -112,13 +112,20 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
         <label className="block text-sm font-medium text-gray-700 mb-1">Photos incident</label>
         <input
           type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => setPhotos((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-2"
+        />
+        <input
+          type="file"
           multiple
           accept="image/*"
           onChange={(e) => setPhotos(Array.from(e.target.files ?? []))}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
         />
         {photos.length > 0 ? (
-          <p className="text-xs text-gray-500 mt-1">{photos.length} photo(s) seront jointes à l'incident</p>
+          <p className="text-xs text-gray-500 mt-1">{photos.length} photo(s) seront jointes a l'incident</p>
         ) : null}
       </div>
 

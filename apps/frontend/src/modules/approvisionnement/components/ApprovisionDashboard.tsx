@@ -1,29 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { SupplierList } from './SupplierList';
 import { PurchaseOrderList } from './PurchaseOrderList';
 import { DeliveryTracker } from './DeliveryTracker';
 import { usePurchaseOrders, useDeliveries } from '../hooks/useProcurement';
 import { ModuleLayout } from '@/components/layout/ModuleLayout';
-import { SkeletonCard } from '@/components/ui/Skeleton';
 import { usePermission } from '@/app/providers/PermissionProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
-type Tab = 'orders' | 'deliveries' | 'suppliers';
-
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'orders', label: 'Commandes' },
-  { key: 'deliveries', label: 'Livraisons' },
-  { key: 'suppliers', label: 'Fournisseurs' },
-];
+type MainTab = 'orders' | 'deliveries';
+type OrderView = 'to_order' | 'in_progress' | 'delivered';
+type DeliveryView = 'pending' | 'done';
 
 interface Props {
   projectId: string;
 }
 
 export function ApprovisionDashboard({ projectId }: Props) {
-  const [tab, setTab] = useState<Tab>('orders');
+  const [mainTab, setMainTab] = useState<MainTab>('orders');
+  const [orderView, setOrderView] = useState<OrderView>('to_order');
+  const [deliveryView, setDeliveryView] = useState<DeliveryView>('pending');
   const { data: orders = [] } = usePurchaseOrders(projectId);
   const { data: deliveries = [] } = useDeliveries(projectId);
   const { can } = usePermission();
@@ -80,32 +76,99 @@ export function ApprovisionDashboard({ projectId }: Props) {
       leftClassName="bf-card-soft p-4 space-y-2"
       left={
         <>
-          <h3 className="bf-text-primary font-black tracking-tight">Navigation donnees</h3>
-          {TABS.map((t) => (
-            <Button
-              key={t.key}
-              type="button"
-              variant={tab === t.key ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setTab(t.key)}
-              className="w-full justify-start"
-            >
-              {t.label}
-            </Button>
-          ))}
+          <h3 className="bf-text-primary font-black tracking-tight">Categories</h3>
+          <Button
+            type="button"
+            variant={mainTab === 'orders' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setMainTab('orders')}
+            className="w-full justify-start"
+          >
+            Commandes
+          </Button>
+          <Button
+            type="button"
+            variant={mainTab === 'deliveries' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setMainTab('deliveries')}
+            className="w-full justify-start"
+          >
+            Livraisons
+          </Button>
+
+          {mainTab === 'orders' ? (
+            <div className="pt-2 border-t border-slate-200 space-y-1">
+              <p className="text-xs uppercase bf-text-muted font-semibold">Sous-categories Commandes</p>
+              <Button
+                type="button"
+                variant={orderView === 'to_order' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setOrderView('to_order')}
+                className="w-full justify-start"
+              >
+                Commandes a passer
+              </Button>
+              <Button
+                type="button"
+                variant={orderView === 'in_progress' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setOrderView('in_progress')}
+                className="w-full justify-start"
+              >
+                Commandes en cours
+              </Button>
+              <Button
+                type="button"
+                variant={orderView === 'delivered' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setOrderView('delivered')}
+                className="w-full justify-start"
+              >
+                Commandes livrees
+              </Button>
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-slate-200 space-y-1">
+              <p className="text-xs uppercase bf-text-muted font-semibold">Sous-categories Livraisons</p>
+              <Button
+                type="button"
+                variant={deliveryView === 'pending' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setDeliveryView('pending')}
+                className="w-full justify-start"
+              >
+                Livraisons en attente
+              </Button>
+              <Button
+                type="button"
+                variant={deliveryView === 'done' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setDeliveryView('done')}
+                className="w-full justify-start"
+              >
+                Livraisons effectuees
+              </Button>
+            </div>
+          )}
         </>
       }
       right={
         <>
           <h3 className="bf-text-primary font-black tracking-tight">Actions rapides</h3>
           {can('procurement:create') && (
-            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('orders')}>Nouvelle commande</Button>
+            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setMainTab('orders'); setOrderView('to_order'); }}>
+              Nouvelle commande
+            </Button>
           )}
           {can('procurement:receive') && (
-            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setTab('deliveries')}>Reception livraison</Button>
+            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setMainTab('deliveries'); setDeliveryView('pending'); }}>
+              Reception livraison
+            </Button>
           )}
           {can('procurement:manage') && (
-            <Button type="button" size="sm" className="w-full justify-start" onClick={() => setTab('orders')}>Escalader retard</Button>
+            <Button type="button" size="sm" className="w-full justify-start" onClick={() => { setMainTab('orders'); setOrderView('in_progress'); }}>
+              Escalader retard
+            </Button>
           )}
           <p className="text-xs bf-text-muted">Flux: Commandes {orders.length} → Livraisons {deliveries.length}</p>
         </>
@@ -164,9 +227,8 @@ export function ApprovisionDashboard({ projectId }: Props) {
         </div>
 
         <div className="bf-card-soft p-4">
-          {tab === 'orders' && <PurchaseOrderList projectId={projectId} />}
-          {tab === 'deliveries' && <DeliveryTracker projectId={projectId} />}
-          {tab === 'suppliers' && <SupplierList projectId={projectId} />}
+          {mainTab === 'orders' && <PurchaseOrderList projectId={projectId} view={orderView} />}
+          {mainTab === 'deliveries' && <DeliveryTracker projectId={projectId} view={deliveryView} />}
         </div>
       </div>
     </ModuleLayout>

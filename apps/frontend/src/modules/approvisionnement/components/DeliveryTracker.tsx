@@ -14,9 +14,10 @@ const DELIVERY_STATUS: Record<string, { label: string; className: string }> = {
 
 interface Props {
   projectId: string;
+  view?: 'pending' | 'done';
 }
 
-export function DeliveryTracker({ projectId }: Props) {
+export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
   const { data: deliveries = [], isLoading } = useDeliveries(projectId);
   const { data: suppliers = [] } = useSuppliers(projectId);
   const { data: orders = [] } = usePurchaseOrders(projectId);
@@ -115,10 +116,23 @@ export function DeliveryTracker({ projectId }: Props) {
     return <div className="text-sm text-gray-500 py-4">Chargement livraisons...</div>;
   }
 
+  const pendingRows = orders
+    .filter((order) => order.status !== 'delivered')
+    .map((order) => ({
+      id: order.id,
+      reference: order.reference,
+      expected_delivery_at: order.expected_delivery_at,
+      supplierName: suppliers.find((supplier) => supplier.id === order.supplier_id)?.name,
+    }));
+
+  const doneRows = deliveries;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-700">Livraisons ({deliveries.length})</h3>
+        <h3 className="font-semibold text-gray-700">
+          {view === 'pending' ? `Livraisons en attente (${pendingRows.length})` : `Livraisons effectuees (${doneRows.length})`}
+        </h3>
         <button
           onClick={() => setShowForm(!showForm)}
           className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
@@ -208,10 +222,29 @@ export function DeliveryTracker({ projectId }: Props) {
       )}
 
       <div className="divide-y">
-        {deliveries.length === 0 ? (
-          <p className="text-sm text-gray-400 py-2">Aucune livraison enregistrée.</p>
+        {view === 'pending' ? (
+          pendingRows.length === 0 ? (
+            <p className="text-sm text-gray-400 py-2">Aucune livraison en attente.</p>
+          ) : (
+            pendingRows.map((pending) => (
+              <div key={pending.id} className="py-2 space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{pending.reference}</span>
+                  <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700">En attente</span>
+                </div>
+                {pending.supplierName ? <p className="text-xs text-gray-400">Fournisseur: {pending.supplierName}</p> : null}
+                {pending.expected_delivery_at ? (
+                  <p className="text-xs text-gray-400">Prevue le {new Date(pending.expected_delivery_at).toLocaleDateString('fr-FR')}</p>
+                ) : (
+                  <p className="text-xs text-gray-400">Date de livraison non renseignee</p>
+                )}
+              </div>
+            ))
+          )
+        ) : doneRows.length === 0 ? (
+          <p className="text-sm text-gray-400 py-2">Aucune livraison enregistree.</p>
         ) : (
-          deliveries.map((d: DeliveryRow) => {
+          doneRows.map((d: DeliveryRow) => {
             const supplierName = suppliers.find((s) => s.id === d.supplier_id)?.name;
             const orderRef = orders.find((o) => o.id === d.order_id)?.reference;
             const statusInfo = DELIVERY_STATUS[d.status ?? ''] ?? { label: d.status, className: 'bg-gray-100 text-gray-600' };
