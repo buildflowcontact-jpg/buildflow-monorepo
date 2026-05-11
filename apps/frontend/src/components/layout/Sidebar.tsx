@@ -17,9 +17,9 @@ export function Sidebar() {
       {can('module:piloter')        && <NavLink to="/piloter"         className={({ isActive }) => viewLinkClass(isActive)}>Taches</NavLink>}
       {can('module:planifier')      && <NavLink to="/planifier"       className={({ isActive }) => viewLinkClass(isActive)}>Planning</NavLink>}
       {can('module:executer')       && <NavLink to="/executer"        className={({ isActive }) => viewLinkClass(isActive)}>Documents</NavLink>}
-      {can('module:approvisionner') && <NavLink to="/approvisionner"  className={({ isActive }) => viewLinkClass(isActive)}>Appro</NavLink>}
-      {can('module:terrain')        && <NavLink to="/terrain"         className={({ isActive }) => viewLinkClass(isActive)}>Chantier</NavLink>}
       {can('module:equipe')         && <NavLink to="/equipe"          className={({ isActive }) => viewLinkClass(isActive)}>Equipe</NavLink>}
+      {can('module:approvisionner') && <NavLink to="/approvisionner"  className={({ isActive }) => viewLinkClass(isActive)}>Appro</NavLink>}
+      {can('module:terrain')        && <NavLink to="/terrain"         className={({ isActive }) => viewLinkClass(isActive)}>Retour chantier</NavLink>}
     </nav>
   );
 }
