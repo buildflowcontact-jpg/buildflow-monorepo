@@ -137,18 +137,22 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <h3 className="bf-text-primary text-lg font-bold">Documents</h3>
-        <Button onClick={() => { setEditDoc(null); setModalOpen(true) }}>Nouveau</Button>
+        <Button onClick={() => { setEditDoc(null); setModalOpen(true) }} className="w-full md:w-auto">Ajouter un nouveau document</Button>
       </div>
       <input
         type="search"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        className="bf-input"
-        placeholder="Recherche plein texte (titre, catégorie)"
+        className="bf-input border-2 border-blue-200 focus:border-blue-400 w-full"
+        placeholder="Rechercher un document (titre, catégorie)"
         aria-label="Recherche de document"
       />
+      {/* Arborescence des documents (placeholder, à remplacer par vraie arborescence si structure disponible) */}
+      <div className="my-2 p-2 rounded bg-slate-50 border border-slate-200 text-xs text-slate-600">
+        <span className="font-semibold">Arborescence :</span> <span className="italic">(à implémenter selon la structure des dossiers/documents)</span>
+      </div>
       <ul className="bf-card-soft divide-y divide-gray-200">
         <AnimatePresence>
           {filteredDocs.length ? filteredDocs.map((doc: any) => (

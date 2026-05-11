@@ -72,12 +72,13 @@ export function ApprovisionDashboard({ projectId }: Props) {
   return (
     <ModuleLayout
       title="Approvisionnement"
-      description="Pilotez le flux commandes vers livraisons avec une execution rapide."
+      description="Pilotez le flux commandes et livraisons avec une interface claire et structurée."
       leftClassName="bf-card-soft p-4 space-y-2"
       left={
         <>
-          <h3 className="bf-text-primary font-black tracking-tight">Categories</h3>
-          <Button
+          <h3 className="bf-text-primary font-black tracking-tight mb-2">Navigation</h3>
+          <div className="flex flex-col gap-1">
+            <Button
             type="button"
             variant={mainTab === 'orders' ? 'default' : 'ghost'}
             size="sm"
@@ -86,91 +87,96 @@ export function ApprovisionDashboard({ projectId }: Props) {
           >
             Commandes
           </Button>
-          <Button
-            type="button"
-            variant={mainTab === 'deliveries' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setMainTab('deliveries')}
-            className="w-full justify-start"
-          >
-            Livraisons
-          </Button>
+            <Button
+              type="button"
+              variant={mainTab === 'deliveries' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setMainTab('deliveries')}
+              className="w-full justify-start"
+            >
+              Livraisons
+            </Button>
+          </div>
 
-          {mainTab === 'orders' ? (
-            <div className="pt-2 border-t border-slate-200 space-y-1">
-              <p className="text-xs uppercase bf-text-muted font-semibold">Sous-categories Commandes</p>
-              <Button
-                type="button"
-                variant={orderView === 'to_order' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setOrderView('to_order')}
-                className="w-full justify-start"
-              >
-                Commandes a passer
-              </Button>
-              <Button
-                type="button"
-                variant={orderView === 'in_progress' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setOrderView('in_progress')}
-                className="w-full justify-start"
-              >
-                Commandes en cours
-              </Button>
-              <Button
-                type="button"
-                variant={orderView === 'delivered' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setOrderView('delivered')}
-                className="w-full justify-start"
-              >
-                Commandes livrees
-              </Button>
-            </div>
-          ) : (
-            <div className="pt-2 border-t border-slate-200 space-y-1">
-              <p className="text-xs uppercase bf-text-muted font-semibold">Sous-categories Livraisons</p>
-              <Button
-                type="button"
-                variant={deliveryView === 'pending' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setDeliveryView('pending')}
-                className="w-full justify-start"
-              >
-                Livraisons en attente
-              </Button>
-              <Button
-                type="button"
-                variant={deliveryView === 'done' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setDeliveryView('done')}
-                className="w-full justify-start"
-              >
-                Livraisons effectuees
-              </Button>
-            </div>
-          )}
+          <div className="pt-2 border-t border-slate-200 space-y-1">
+            {mainTab === 'orders' ? (
+              <>
+                <p className="text-xs uppercase bf-text-muted font-semibold">Commandes</p>
+                <Button
+                  type="button"
+                  variant={orderView === 'to_order' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setOrderView('to_order')}
+                  className="w-full justify-start"
+                >
+                  À passer
+                </Button>
+                <Button
+                  type="button"
+                  variant={orderView === 'in_progress' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setOrderView('in_progress')}
+                  className="w-full justify-start"
+                >
+                  En cours
+                </Button>
+                <Button
+                  type="button"
+                  variant={orderView === 'delivered' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setOrderView('delivered')}
+                  className="w-full justify-start"
+                >
+                  Livrées
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs uppercase bf-text-muted font-semibold">Livraisons</p>
+                <Button
+                  type="button"
+                  variant={deliveryView === 'pending' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDeliveryView('pending')}
+                  className="w-full justify-start"
+                >
+                  En attente
+                </Button>
+                <Button
+                  type="button"
+                  variant={deliveryView === 'done' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDeliveryView('done')}
+                  className="w-full justify-start"
+                >
+                  Effectuées
+                </Button>
+              </>
+            )}
+          </div>
         </>
       }
       right={
         <>
-          <h3 className="bf-text-primary font-black tracking-tight">Actions rapides</h3>
-          {can('procurement:create') && (
-            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setMainTab('orders'); setOrderView('to_order'); }}>
-              Nouvelle commande
-            </Button>
-          )}
-          {can('procurement:receive') && (
-            <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setMainTab('deliveries'); setDeliveryView('pending'); }}>
-              Reception livraison
-            </Button>
-          )}
-          {can('procurement:manage') && (
-            <Button type="button" size="sm" className="w-full justify-start" onClick={() => { setMainTab('orders'); setOrderView('in_progress'); }}>
-              Escalader retard
-            </Button>
-          )}
-          <p className="text-xs bf-text-muted">Flux: Commandes {orders.length} → Livraisons {deliveries.length}</p>
+          <h3 className="bf-text-primary font-black tracking-tight mb-2">Actions</h3>
+          <div className="flex flex-col gap-1">
+            {can('procurement:create') && (
+              <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setMainTab('orders'); setOrderView('to_order'); }}>
+                Nouvelle commande
+              </Button>
+            )}
+            {can('procurement:receive') && (
+              <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => { setMainTab('deliveries'); setDeliveryView('pending'); }}>
+                Réception livraison
+              </Button>
+            )}
+            {can('procurement:manage') && (
+              <Button type="button" size="sm" className="w-full justify-start" onClick={() => { setMainTab('orders'); setOrderView('in_progress'); }}>
+                Escalader retard
+              </Button>
+            )}
+          </div>
+          <p className="text-xs bf-text-muted mt-2">Flux : <span className="font-semibold">Commandes</span> {orders.length} → <span className="font-semibold">Livraisons</span> {deliveries.length}</p>
         </>
       }
     >

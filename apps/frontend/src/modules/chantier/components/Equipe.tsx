@@ -265,8 +265,8 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
       </div>
 
       {selectedMember ? (
-        <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center px-4" role="dialog" aria-modal="true">
-          <div className="bf-modal w-full max-w-4xl p-5 space-y-4 max-h-[90vh] overflow-auto">
+        <div className="fixed inset-0 z-[1000] bg-black/40 flex items-center justify-center px-2 md:px-4" role="dialog" aria-modal="true" style={{position:'fixed',left:0,top:0,width:'100vw',height:'100vh'}}>
+          <div className="bf-modal w-full max-w-4xl p-5 space-y-4 max-h-[90vh] overflow-auto shadow-2xl border-2 border-blue-200 bg-white">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h4 className="bf-text-primary font-black text-xl">{selectedMember.full_name}</h4>
