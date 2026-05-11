@@ -3,10 +3,6 @@
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
-  "env": {
-    "VITE_SUPABASE_URL": "@buildflow_supabase_url",
-    "VITE_SUPABASE_ANON_KEY": "@buildflow_supabase_anon_key"
-  },
   "headers": [
     {
       "source": "/(.*)",
