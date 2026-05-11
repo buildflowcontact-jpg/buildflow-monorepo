@@ -20,8 +20,8 @@ export function Header({ userRole, email, onSignOut, statusLabel, projectId }: H
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="BuildFlow" className="h-11 w-11 rounded-xl object-contain bf-logo" />
           <div>
-            <p className="text-lg leading-5 font-black bf-text-primary">BuildFlow</p>
-            <p className="text-xs bf-text-muted">Cockpit operationnel chantier</p>
+            <p className="text-lg leading-5 font-black bf-text-primary tracking-tight">BuildFlow</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted">Cockpit operationnel chantier</p>
           </div>
         </div>
 
