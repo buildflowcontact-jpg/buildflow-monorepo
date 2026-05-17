@@ -83,7 +83,7 @@ export const CollisionAlert: React.FC<CollisionAlertProps> = ({
 
     setResolving(true);
     try {
-      const { data, errors } = await client.mutate({
+      const result = await client.mutate({
         mutation: RESOLVE_COLLISION_MUTATION,
         variables: {
           collision_id: collision.id,
@@ -91,8 +91,8 @@ export const CollisionAlert: React.FC<CollisionAlertProps> = ({
         },
       });
 
-      if (errors) {
-        throw new Error(errors[0].message);
+      if (result.error) {
+        throw result.error;
       }
 
       onResolve(collision.id, resolutionNotes);

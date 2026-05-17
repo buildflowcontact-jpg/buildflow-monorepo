@@ -8,10 +8,53 @@ import { gql } from '@apollo/client/core';
 interface ScheduleFormProps {
   projectId: string;
   workerId: string;
-  onSuccess: (schedule: any) => void;
+  onSuccess: (schedule: WorkerSchedulePayload) => void;
   onError: (error: Error) => void;
   initialData?: any;
   isEditing?: boolean;
+}
+
+interface WorkerSchedulePayload {
+  id: string;
+  project_id: string;
+  worker_id: string;
+  location: string;
+  start_time: string;
+  end_time: string;
+  equipment_ids: string[];
+  is_tentative: boolean;
+  notes?: string;
+}
+
+interface CollisionPayload {
+  id: string;
+  collision_type: string;
+  severity: string;
+  overlap_minutes: number;
+  suggested_resolution?: string;
+}
+
+interface ScheduleMutationResult {
+  schedule: WorkerSchedulePayload;
+  collisions: CollisionPayload[];
+  alerts_created: number;
+}
+
+interface CreateScheduleData {
+  createWorkerSchedule: ScheduleMutationResult;
+}
+
+interface UpdateScheduleData {
+  updateWorkerSchedule: ScheduleMutationResult;
+}
+
+interface FormData {
+  location: string;
+  start_time: string;
+  end_time: string;
+  equipment_ids: string[];
+  is_tentative: boolean;
+  notes: string;
 }
 
 const CREATE_SCHEDULE_MUTATION = gql`
@@ -76,11 +119,11 @@ export const WorkerScheduleForm: React.FC<ScheduleFormProps> = ({
   const client = useApolloClient();
   const [loading, setLoading] = useState(false);
   const [collisions, setCollisions] = useState<any[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     location: initialData?.location || '',
     start_time: initialData?.start_time || '',
     end_time: initialData?.end_time || '',
-    equipment_ids: initialData?.equipment_ids || [],
+    equipment_ids: (initialData?.equipment_ids as string[]) || [],
     is_tentative: initialData?.is_tentative || false,
     notes: initialData?.notes || '',
   });
@@ -128,18 +171,22 @@ export const WorkerScheduleForm: React.FC<ScheduleFormProps> = ({
         ? UPDATE_SCHEDULE_MUTATION
         : CREATE_SCHEDULE_MUTATION;
 
-      const { data, errors } = await client.mutate({
+      const result = await client.mutate<CreateScheduleData | UpdateScheduleData>({
         mutation,
         variables: { input },
       });
 
-      if (errors) {
-        throw new Error(errors[0].message);
+      if (result.error) {
+        throw result.error;
       }
 
       const payload = isEditing
-        ? data.updateWorkerSchedule
-        : data.createWorkerSchedule;
+        ? (result.data as UpdateScheduleData | undefined)?.updateWorkerSchedule
+        : (result.data as CreateScheduleData | undefined)?.createWorkerSchedule;
+
+      if (!payload) {
+        throw new Error('No response payload returned by schedule mutation');
+      }
 
       setCollisions(payload.collisions || []);
 

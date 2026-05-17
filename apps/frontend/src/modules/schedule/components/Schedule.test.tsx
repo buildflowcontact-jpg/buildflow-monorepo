@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { MockedProvider } from '@apollo/client/testing/react';
 import WorkerScheduleForm from '../components/WorkerScheduleForm';
@@ -31,11 +32,11 @@ describe('WorkerScheduleForm Component', () => {
 
     expect(
       screen.getByRole('heading', { name: 'Create Schedule' })
-    ).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/e.g., Site A/i)).toBeInTheDocument();
-    expect(screen.getByText('Location *')).toBeInTheDocument();
-    expect(screen.getByText('Start Time *')).toBeInTheDocument();
-    expect(screen.getByText('End Time *')).toBeInTheDocument();
+    ).toBeTruthy();
+    expect(screen.getByPlaceholderText(/e.g., Site A/i)).toBeTruthy();
+    expect(screen.getByText('Location *')).toBeTruthy();
+    expect(screen.getByText('Start Time *')).toBeTruthy();
+    expect(screen.getByText('End Time *')).toBeTruthy();
   });
 
   it('should show editing mode when isEditing is true', () => {
@@ -57,7 +58,7 @@ describe('WorkerScheduleForm Component', () => {
       </MockedProvider>
     );
 
-    expect(screen.getByText('Edit Schedule')).toBeInTheDocument();
+    expect(screen.getByText('Edit Schedule')).toBeTruthy();
   });
 
   it('should display collision warnings when present', () => {
@@ -71,7 +72,7 @@ describe('WorkerScheduleForm Component', () => {
     // For now, we're testing the rendering structure
     expect(
       screen.getByRole('heading', { name: 'Create Schedule' })
-    ).toBeInTheDocument();
+    ).toBeTruthy();
   });
 
   it('should validate required fields', () => {
@@ -119,9 +120,9 @@ describe('CollisionAlert Component', () => {
       </MockedProvider>
     );
 
-    expect(screen.getByText('LOCATION OVERLAP')).toBeInTheDocument();
-    expect(screen.getByText('HIGH')).toBeInTheDocument();
-    expect(screen.getByText(/120 minutes/)).toBeInTheDocument();
+    expect(screen.getByText('LOCATION OVERLAP')).toBeTruthy();
+    expect(screen.getByText('HIGH')).toBeTruthy();
+    expect(screen.getByText(/120 minutes/)).toBeTruthy();
   });
 
   it('should show resolve button', () => {
@@ -135,8 +136,8 @@ describe('CollisionAlert Component', () => {
       </MockedProvider>
     );
 
-    expect(screen.getByText('Resolve')).toBeInTheDocument();
-    expect(screen.getByText('✕')).toBeInTheDocument();
+    expect(screen.getByText('Resolve')).toBeTruthy();
+    expect(screen.getByText('✕')).toBeTruthy();
   });
 
   it('should display suggested resolution', () => {
@@ -152,7 +153,7 @@ describe('CollisionAlert Component', () => {
 
     expect(
       screen.getByText('Reschedule one worker')
-    ).toBeInTheDocument();
+    ).toBeTruthy();
   });
 });
 
@@ -191,9 +192,9 @@ describe('CollisionList Component', () => {
       </MockedProvider>
     );
 
-    expect(screen.getByText(/Scheduling Conflicts \(2\)/)).toBeInTheDocument();
-    expect(screen.getByText('LOCATION OVERLAP')).toBeInTheDocument();
-    expect(screen.getByText('EQUIPMENT CONFLICT')).toBeInTheDocument();
+    expect(screen.getByText(/Scheduling Conflicts \(2\)/)).toBeTruthy();
+    expect(screen.getByText('LOCATION OVERLAP')).toBeTruthy();
+    expect(screen.getByText('EQUIPMENT CONFLICT')).toBeTruthy();
   });
 
   it('should show empty state when no collisions', () => {
@@ -209,7 +210,7 @@ describe('CollisionList Component', () => {
 
     expect(
       screen.getByText('✓ No scheduling conflicts detected')
-    ).toBeInTheDocument();
+    ).toBeTruthy();
   });
 
   it('should show loading state', () => {

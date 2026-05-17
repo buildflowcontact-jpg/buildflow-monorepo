@@ -39,6 +39,26 @@ interface UseSchedulesReturn {
   resolveCollision: (id: string, notes: string) => Promise<void>;
 }
 
+interface ListProjectSchedulesData {
+  listProjectSchedules: WorkerSchedule[];
+}
+
+interface ListCollisionsData {
+  listCollisions: ScheduleCollision[];
+}
+
+interface DeleteScheduleData {
+  deleteWorkerSchedule: boolean;
+}
+
+interface ResolveCollisionData {
+  resolveCollision: {
+    id: string;
+    resolved_at: string;
+    resolution_notes: string;
+  };
+}
+
 const LIST_PROJECT_SCHEDULES = gql`
   query ListProjectSchedules(
     $project_id: ID!
@@ -126,8 +146,7 @@ export const useSchedules = (projectId: string): UseSchedulesReturn => {
       endDate.setDate(endDate.getDate() + 7);
 
       // Fetch schedules
-      const { data: schedulesData, errors: schedulesErrors } =
-        await client.query({
+      const schedulesResult = await client.query<ListProjectSchedulesData>({
           query: LIST_PROJECT_SCHEDULES,
           variables: {
             project_id: projectId,
@@ -136,15 +155,14 @@ export const useSchedules = (projectId: string): UseSchedulesReturn => {
           },
         });
 
-      if (schedulesErrors) {
-        throw new Error(schedulesErrors[0].message);
+      if (schedulesResult.error) {
+        throw schedulesResult.error;
       }
 
-      setSchedules(schedulesData.listProjectSchedules || []);
+      setSchedules(schedulesResult.data?.listProjectSchedules ?? []);
 
       // Fetch collisions
-      const { data: collisionsData, errors: collisionsErrors } =
-        await client.query({
+      const collisionsResult = await client.query<ListCollisionsData>({
           query: LIST_COLLISIONS,
           variables: {
             project_id: projectId,
@@ -152,11 +170,11 @@ export const useSchedules = (projectId: string): UseSchedulesReturn => {
           },
         });
 
-      if (collisionsErrors) {
-        throw new Error(collisionsErrors[0].message);
+      if (collisionsResult.error) {
+        throw collisionsResult.error;
       }
 
-      setCollisions(collisionsData.listCollisions || []);
+      setCollisions(collisionsResult.data?.listCollisions ?? []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -175,13 +193,13 @@ export const useSchedules = (projectId: string): UseSchedulesReturn => {
   const deleteSchedule = useCallback(
     async (id: string) => {
       try {
-        const { errors } = await client.mutate({
+        const result = await client.mutate<DeleteScheduleData>({
           mutation: DELETE_SCHEDULE,
           variables: { id },
         });
 
-        if (errors) {
-          throw new Error(errors[0].message);
+        if (result.error) {
+          throw result.error;
         }
 
         // Remove from local state
@@ -198,7 +216,7 @@ export const useSchedules = (projectId: string): UseSchedulesReturn => {
   const resolveCollision = useCallback(
     async (id: string, notes: string) => {
       try {
-        const { errors } = await client.mutate({
+        const result = await client.mutate<ResolveCollisionData>({
           mutation: RESOLVE_COLLISION,
           variables: {
             collision_id: id,
@@ -206,8 +224,8 @@ export const useSchedules = (projectId: string): UseSchedulesReturn => {
           },
         });
 
-        if (errors) {
-          throw new Error(errors[0].message);
+        if (result.error) {
+          throw result.error;
         }
 
         // Remove from local state
