@@ -176,7 +176,7 @@ export function Taches() {
           <p className="text-xs bf-text-muted">Priorité: {PRIORITY_LABEL[task.priority]}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <Button type="button" size="sm" variant="outline" onClick={() => openEditModal(task)}>Éditer</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => openEditModal(task)}>Éditer</Button>
           <Button type="button" size="sm" variant="destructive" onClick={() => openDeleteModal(task.id)}>Supprimer</Button>
         </div>
       </div>

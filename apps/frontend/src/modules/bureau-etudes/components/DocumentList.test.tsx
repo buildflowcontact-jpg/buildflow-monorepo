@@ -57,7 +57,7 @@ describe("DocumentList", () => {
     });
     expect(await screen.findByText(/Documents/)).toBeInTheDocument()
     await act(async () => {
-      fireEvent.click(screen.getByText(/Nouveau/))
+      fireEvent.click(screen.getByRole('button', { name: /ajouter un nouveau document/i }))
     });
     const titreInput = await screen.findByLabelText(/Titre/)
     await act(async () => {

@@ -56,6 +56,10 @@ export function useDocumentVersions(documentId: string | null) {
     queryKey: ['document-versions', documentId],
     enabled: !!documentId,
     queryFn: async () => {
+      if (!documentId) {
+        return [] as DocumentVersion[];
+      }
+
       const { data, error } = await supabase
         .from('document_versions')
         .select('id, document_id, file_url, version_label, created_at')

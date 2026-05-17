@@ -44,6 +44,7 @@ const TimeTrackingDashboard = React.lazy(() => import("./modules/time-tracking/c
 const AccountSettings = React.lazy(() => import("./modules/settings/components/AccountSettings").then((module) => ({ default: module.AccountSettings })));
 const AuditTrailPage = React.lazy(() => import("./modules/audit/pages/AuditTrailPage").then((module) => ({ default: module.AuditTrailPage })));
 const CreateProjectPanel = React.lazy(() => import("./components/shared/CreateProjectPanel").then((module) => ({ default: module.CreateProjectPanel })));
+const ScheduleModule = React.lazy(() => import("./modules/schedule/ScheduleModule").then((module) => ({ default: module.ScheduleModule })));
 
 function SectionLoader({ label = "Chargement du module..." }: { label?: string }) {
   return (
@@ -273,6 +274,25 @@ function App() {
                 >
                   <Suspense fallback={<SectionLoader label="Chargement du planning..." />}>
                     <Planifier />
+                  </Suspense>
+                </motion.section>
+                </ProtectedRoute>
+                )} />
+
+                <Route path="/schedule" element={(
+                <ProtectedRoute permission="module:planifier">
+                <motion.section
+                  key="schedule"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <Suspense fallback={<SectionLoader label="Chargement du planning des equipes..." />}>
+                    <ScheduleModule
+                      projectId={resolvedProjectId}
+                      currentUserId={userId}
+                    />
                   </Suspense>
                 </motion.section>
                 </ProtectedRoute>
