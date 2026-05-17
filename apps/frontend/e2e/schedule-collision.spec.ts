@@ -14,7 +14,7 @@ test.describe('Collision Detection Feature', () => {
   test.beforeEach(async ({ page }) => {
     // Login or navigate to scheduling page
     // This assumes you have authentication setup
-    await page.goto(`${BASE_URL}/projects/${TEST_PROJECT_ID}/schedule`);
+    await page.goto(`${BASE_URL}/schedule`);
     
     // Wait for page to load
     await page.waitForSelector('text=Scheduling & Collision Detection', {
@@ -281,7 +281,7 @@ test.describe('Collision Detection - Performance', () => {
   test('should load schedules within acceptable time', async ({ page }) => {
     const startTime = Date.now();
     
-    await page.goto(`${BASE_URL}/projects/${TEST_PROJECT_ID}/schedule`);
+    await page.goto(`${BASE_URL}/schedule`);
     await page.waitForSelector('table', { timeout: 10000 });
     
     const loadTime = Date.now() - startTime;
@@ -293,7 +293,7 @@ test.describe('Collision Detection - Performance', () => {
 
 test.describe('Collision Detection - Accessibility', () => {
   test('should have proper ARIA labels', async ({ page }) => {
-    await page.goto(`${BASE_URL}/projects/${TEST_PROJECT_ID}/schedule`);
+    await page.goto(`${BASE_URL}/schedule`);
 
     // Verify buttons have accessible names
     const buttons = page.locator('button');
@@ -303,7 +303,7 @@ test.describe('Collision Detection - Accessibility', () => {
   });
 
   test('should be keyboard navigable', async ({ page }) => {
-    await page.goto(`${BASE_URL}/projects/${TEST_PROJECT_ID}/schedule`);
+    await page.goto(`${BASE_URL}/schedule`);
 
     // Tab through form elements
     await page.keyboard.press('Tab');
