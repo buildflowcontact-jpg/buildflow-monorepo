@@ -44,7 +44,7 @@ const TimeTrackingDashboard = React.lazy(() => import("./modules/time-tracking/c
 const AccountSettings = React.lazy(() => import("./modules/settings/components/AccountSettings").then((module) => ({ default: module.AccountSettings })));
 const AuditTrailPage = React.lazy(() => import("./modules/audit/pages/AuditTrailPage").then((module) => ({ default: module.AuditTrailPage })));
 const CreateProjectPanel = React.lazy(() => import("./components/shared/CreateProjectPanel").then((module) => ({ default: module.CreateProjectPanel })));
-const SchedulingDashboard = React.lazy(() => import("./modules/schedule/pages/SchedulingDashboard").then((module) => ({ default: module.SchedulingDashboard })));
+const ScheduleModule = React.lazy(() => import("./modules/schedule/ScheduleModule").then((module) => ({ default: module.ScheduleModule })));
 
 function SectionLoader({ label = "Chargement du module..." }: { label?: string }) {
   return (
@@ -289,7 +289,7 @@ function App() {
                   transition={{ duration: 0.22 }}
                 >
                   <Suspense fallback={<SectionLoader label="Chargement du planning des equipes..." />}>
-                    <SchedulingDashboard
+                    <ScheduleModule
                       projectId={resolvedProjectId}
                       currentUserId={userId}
                     />
