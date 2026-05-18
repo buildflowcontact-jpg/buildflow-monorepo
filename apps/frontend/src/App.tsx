@@ -22,6 +22,8 @@ import { t } from "./i18n";
 import { ProjectProvider } from "./app/providers/ProjectProvider";
 import { PermissionProvider } from "./app/providers/PermissionProvider";
 import { AppContextProvider } from "./app/providers/AppContext";
+import { usePermission } from "./app/providers/PermissionProvider";
+import QuickActionPro from "./QuickActionPro";
 
 const AuthForm = React.lazy(() => import("./components/ui/AuthForm").then((module) => ({ default: module.AuthForm })));
 const GlobalDashboard = React.lazy(() => import("./features/dashboard/GlobalDashboard").then((module) => ({ default: module.GlobalDashboard })));
@@ -53,6 +55,16 @@ function SectionLoader({ label = "Chargement du module..." }: { label?: string }
       <span className="text-sm font-semibold text-slate-700">{label}</span>
     </div>
   );
+}
+
+function QuickActionDock({ projectId, activeDocumentId }: { projectId: string | null; activeDocumentId: string | null }) {
+  const { can } = usePermission();
+
+  if (!projectId || !can('module:terrain')) {
+    return null;
+  }
+
+  return <QuickActionPro projectId={projectId} activeDocumentId={activeDocumentId ?? undefined} />;
 }
 
 function App() {
@@ -523,6 +535,7 @@ function App() {
         </div>
 
         <MobileNav />
+        <QuickActionDock projectId={resolvedProjectId} activeDocumentId={activeDocumentId} />
       </div>
     </ThemeProvider>
         </AppContextProvider>
