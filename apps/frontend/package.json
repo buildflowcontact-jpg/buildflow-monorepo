@@ -2,6 +2,11 @@
   "name": "buildflow-frontend",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "react-pdf-highlighter": {
+      "pdfjs-dist": "^5.7.284"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
