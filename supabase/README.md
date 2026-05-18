@@ -20,7 +20,13 @@
 \i scheduling_schema.sql
 ```
 
-4. Appliquer les regles RLS :
+4. Appliquer le hotfix scheduling (RLS recursion + policy insert + trigger log) :
+
+```sql
+\i scheduling_hotfix_2026_05_18.sql
+```
+
+5. Appliquer les regles RLS :
 
 ```sql
 \i rls.sql
