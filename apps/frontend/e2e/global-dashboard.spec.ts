@@ -1,7 +1,7 @@
 // e2e/global-dashboard.spec.ts
 // Vérifie le dashboard global multi-projets.
 import { test, expect } from '@playwright/test';
-import { mockAuth, mockProjects } from './utils/mocks';
+import { mockAuth, mockProjectMembers, mockProjects } from './utils/mocks';
 
 test.describe('Dashboard global', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,14 +9,16 @@ test.describe('Dashboard global', () => {
     const testPassword = process.env.PLAYWRIGHT_TEST_PASSWORD;
 
     await mockAuth(page);
+    // Mock les autres tables avant les routes spécifiques pour ne pas écraser
+    // le projet courant et le rôle utilisés par les routes protégées.
+    await page.route('**/rest/v1/**', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    );
     await mockProjects(page, [
       { id: 'p1', name: 'Chantier Alpha', code: 'CHT-001', status: 'active' },
       { id: 'p2', name: 'Résidence Bêta', code: 'RES-002', status: 'on_hold' },
     ]);
-    // Mock les autres tables pour éviter les erreurs réseau
-    await page.route('**/rest/v1/**', route =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    );
+    await mockProjectMembers(page);
     await page.goto('/dashboard');
     const loginHeading = page.getByRole('heading', { name: 'Connexion' });
 
@@ -39,17 +41,17 @@ test.describe('Dashboard global', () => {
   });
 
   test('affiche le titre "Vue globale"', async ({ page }) => {
-    await expect(page.getByText(/vue globale/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible({ timeout: 10000 });
   });
 
   test('affiche les cartes projets', async ({ page }) => {
-    await page.waitForSelector('text=Vue globale', { timeout: 10000 });
-    await expect(page.getByText('Chantier Alpha')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Résidence Bêta')).toBeVisible({ timeout: 5000 });
+    await page.waitForSelector('text=Tableau de bord', { timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Chantier Alpha.*CHT-001.*Actif/i }).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole('button', { name: /Résidence Bêta.*En pause/i }).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('affiche les codes projets', async ({ page }) => {
-    await page.waitForSelector('text=Vue globale', { timeout: 10000 });
-    await expect(page.getByText('CHT-001')).toBeVisible({ timeout: 8000 });
+    await page.waitForSelector('text=Tableau de bord', { timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Chantier Alpha.*CHT-001.*Actif/i }).first()).toContainText('CHT-001', { timeout: 8000 });
   });
 });
