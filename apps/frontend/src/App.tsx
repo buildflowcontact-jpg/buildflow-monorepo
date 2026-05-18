@@ -382,7 +382,22 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
-                <Route path="/incidents" element={<Navigate to="/retour-chantier" replace />} />
+                <Route path="/incidents" element={(
+                <ProtectedRoute permission="module:terrain">
+                <motion.section
+                  key="incidents"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22 }}
+                  className="surface-panel p-5 md:p-6"
+                >
+                  <Suspense fallback={<SectionLoader label="Chargement incidents terrain..." />}>
+                    <IncidentsPage projectId={resolvedProjectId} />
+                  </Suspense>
+                </motion.section>
+                </ProtectedRoute>
+                )} />
 
                 <Route path="/rh-securite" element={(
                 <ProtectedRoute permission="module:rh">
@@ -480,24 +495,9 @@ function App() {
                 </ProtectedRoute>
                 )} />
 
-                <Route path="/terrain" element={<Navigate to="/retour-chantier" replace />} />
+                <Route path="/terrain" element={<Navigate to="/incidents" replace />} />
 
-                <Route path="/retour-chantier" element={(
-                <ProtectedRoute permission="module:terrain">
-                <motion.section
-                  key="retour-chantier"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.22 }}
-                  className="surface-panel p-5 md:p-6"
-                >
-                  <Suspense fallback={<SectionLoader label="Chargement retours chantier..." />}>
-                    <IncidentsPage projectId={resolvedProjectId} />
-                  </Suspense>
-                </motion.section>
-                </ProtectedRoute>
-                )} />
+                <Route path="/retour-chantier" element={<Navigate to="/incidents" replace />} />
 
                 <Route path="/audit" element={(
                 <ProtectedRoute permission="module:audit">

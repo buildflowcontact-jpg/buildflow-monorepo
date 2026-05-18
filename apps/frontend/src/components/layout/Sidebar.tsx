@@ -13,10 +13,10 @@ const ESSENTIAL_ITEMS: NavItem[] = [
   { permission: 'module:piloter', to: '/taches', label: 'Taches' },
   { permission: 'module:planifier', to: '/planifier', label: 'Planning' },
   { permission: 'module:planifier', to: '/schedule', label: 'Planning equipes' },
-  { permission: 'module:executer', to: '/documents', label: 'Documents' },
+  { permission: 'module:executer', to: '/executer', label: 'Execution' },
   { permission: 'module:equipe', to: '/equipe', label: 'Equipe' },
   { permission: 'module:approvisionner', to: '/approvisionner', label: 'Appro' },
-  { permission: 'module:terrain', to: '/retour-chantier', label: 'Retour chantier' },
+  { permission: 'module:terrain', to: '/incidents', label: 'Incidents terrain' },
 ];
 
 const ADVANCED_ITEMS: NavItem[] = [

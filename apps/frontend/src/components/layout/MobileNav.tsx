@@ -12,8 +12,8 @@ const ESSENTIAL_ITEMS: NavItem[] = [
   { permission: 'module:dashboard', to: '/dashboard', label: 'Accueil' },
   { permission: 'module:piloter', to: '/taches', label: 'Taches' },
   { permission: 'module:planifier', to: '/planifier', label: 'Planning' },
-  { permission: 'module:executer', to: '/documents', label: 'Docs' },
-  { permission: 'module:terrain', to: '/retour-chantier', label: 'Terrain' },
+  { permission: 'module:executer', to: '/executer', label: 'Execution' },
+  { permission: 'module:terrain', to: '/incidents', label: 'Incidents' },
 ];
 
 const ADVANCED_ITEMS: NavItem[] = [

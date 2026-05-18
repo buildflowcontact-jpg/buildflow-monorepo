@@ -15,7 +15,7 @@ const resultTypeLabel: Record<SearchResultType, string> = {
 const resultTypeRoute: Record<SearchResultType, string> = {
   project: '/executer',
   document: '/executer',
-  incident: '/executer',
+  incident: '/incidents',
   task: '/planifier',
   supplier: '/piloter',
   worker: '/equipe',
