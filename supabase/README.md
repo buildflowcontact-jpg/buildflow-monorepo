@@ -14,7 +14,13 @@
 \i triggers.sql
 ```
 
-3. Appliquer les règles RLS :
+3. Appliquer le schema scheduling :
+
+```sql
+\i scheduling_schema.sql
+```
+
+4. Appliquer les regles RLS :
 
 ```sql
 \i rls.sql
