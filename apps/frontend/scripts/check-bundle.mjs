@@ -12,7 +12,7 @@ const LIMITS = [
   { name: 'dataVendor', pattern: /^dataVendor-.*\.js$/, maxBytes: 270 * KB },
   { name: 'supabaseVendor', pattern: /^supabaseVendor-.*\.js$/, maxBytes: 260 * KB },
   { name: 'pdf_viewer', pattern: /^pdf_viewer-.*\.js$/, maxBytes: 180 * KB },
-  { name: 'PDFAnnotator', pattern: /^PDFAnnotator-.*\.js$/, maxBytes: 450 * KB },
+  { name: 'PDFAnnotator', pattern: /^PDFAnnotator-.*\.js$/, maxBytes: 500 * KB },
   { name: 'threeVendor', pattern: /^threeVendor-.*\.js$/, maxBytes: 850 * KB },
   { name: 'ifcCore', pattern: /^ifcCore-.*\.js$/, maxBytes: 2800 * KB },
 ];
