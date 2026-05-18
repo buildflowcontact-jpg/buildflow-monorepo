@@ -11,13 +11,19 @@ import { createScheduleResolvers } from './resolvers/schedule.resolver';
 // CONFIGURATION
 // ============================================================
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'your-anon-key';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-service-role-key';
-const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+const EnvSchema = z.object({
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_ANON_KEY: z.string().min(1),
+  JWT_SECRET: z.string().min(32),
+});
+
+const env = EnvSchema.parse(process.env);
+
+const supabaseUrl = env.SUPABASE_URL;
+const supabaseKey = env.SUPABASE_ANON_KEY;
+const jwtSecret = env.JWT_SECRET;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
 // ============================================================
 // SCHEMAS DE VALIDATION
@@ -28,7 +34,7 @@ const CreateProjectEventSchema = z.object({
   type: z.enum(['TASK_CREATED', 'INCIDENT_REPORTED', 'DOCUMENT_UPLOADED', 'BUDGET_UPDATED']),
   description: z.string().optional(),
   blueprint_id: z.string().uuid().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 type CreateProjectEventInput = z.infer<typeof CreateProjectEventSchema>;

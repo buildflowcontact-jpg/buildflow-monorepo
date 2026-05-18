@@ -318,24 +318,52 @@ export class CollisionDetectionService {
     workerId: string,
     projectId: string
   ): Promise<ScheduleCollision[]> {
-    const { data, error } = await this.supabase
-      .from('schedule_collisions')
-      .select('*')
-      .or(
-        `primary_schedule_id.in.(
-        select id from worker_schedules where worker_id = '${workerId}' and project_id = '${projectId}'
-      ),conflicting_schedule_id.in.(
-        select id from worker_schedules where worker_id = '${workerId}' and project_id = '${projectId}'
-      )`
-      )
-      .is('resolved_at', null);
+    const { data: schedules, error: schedulesError } = await this.supabase
+      .from('worker_schedules')
+      .select('id')
+      .eq('worker_id', workerId)
+      .eq('project_id', projectId);
 
-    if (error) {
-      console.error('Error fetching worker conflicts:', error);
-      throw error;
+    if (schedulesError) {
+      console.error('Error fetching worker schedules for conflicts:', schedulesError);
+      throw schedulesError;
     }
 
-    return data || [];
+    const scheduleIds = (schedules || []).map((schedule) => schedule.id);
+    if (scheduleIds.length === 0) {
+      return [];
+    }
+
+    const [primaryResult, conflictingResult] = await Promise.all([
+      this.supabase
+        .from('schedule_collisions')
+        .select('*')
+        .in('primary_schedule_id', scheduleIds)
+        .is('resolved_at', null),
+      this.supabase
+        .from('schedule_collisions')
+        .select('*')
+        .in('conflicting_schedule_id', scheduleIds)
+        .is('resolved_at', null),
+    ]);
+
+    if (primaryResult.error) {
+      console.error('Error fetching primary worker conflicts:', primaryResult.error);
+      throw primaryResult.error;
+    }
+
+    if (conflictingResult.error) {
+      console.error('Error fetching secondary worker conflicts:', conflictingResult.error);
+      throw conflictingResult.error;
+    }
+
+    const merged = [
+      ...(primaryResult.data || []),
+      ...(conflictingResult.data || []),
+    ];
+
+    const uniqueById = new Map(merged.map((collision) => [collision.id, collision]));
+    return Array.from(uniqueById.values());
   }
 
   /**
