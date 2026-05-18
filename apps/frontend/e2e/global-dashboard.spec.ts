@@ -5,6 +5,9 @@ import { mockAuth, mockProjects } from './utils/mocks';
 
 test.describe('Dashboard global', () => {
   test.beforeEach(async ({ page }) => {
+    const testEmail = process.env.PLAYWRIGHT_TEST_EMAIL;
+    const testPassword = process.env.PLAYWRIGHT_TEST_PASSWORD;
+
     await mockAuth(page);
     await mockProjects(page, [
       { id: 'p1', name: 'Chantier Alpha', code: 'CHT-001', status: 'active' },
@@ -15,6 +18,24 @@ test.describe('Dashboard global', () => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     );
     await page.goto('/dashboard');
+    const loginHeading = page.getByRole('heading', { name: 'Connexion' });
+
+    await page.waitForLoadState('domcontentloaded');
+    const loginVisible = await loginHeading
+      .waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (loginVisible) {
+      if (!testEmail || !testPassword) {
+        test.skip(true, 'E2E requires auth. Set PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD.');
+      }
+
+      await page.fill('#email', testEmail!);
+      await page.fill('#password', testPassword!);
+      await page.click('button:has-text("Se connecter")');
+      await page.waitForLoadState('networkidle');
+    }
   });
 
   test('affiche le titre "Vue globale"', async ({ page }) => {
