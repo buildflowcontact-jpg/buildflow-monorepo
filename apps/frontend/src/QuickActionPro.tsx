@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, AlertTriangle, Camera, CheckCircle2, Package, X, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { uploadImageToSupabase } from './features/quickaction/uploadImageToSupabase';
@@ -93,6 +93,7 @@ function dataUrlToFile(dataUrl: string, filename: string): File {
 const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { showToast } = useToast() || {};
@@ -202,12 +203,33 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     return `${pendingCount} action${pendingCount > 1 ? 's' : ''} en attente`;
   }, [pendingCount]);
 
+  const descriptionLength = form.description.trim().length;
+  const isIncidentWithoutDescription = form.type === 'INCIDENT' && descriptionLength === 0;
+
   // Vibration mobile
   const triggerHaptic = () => {
     if (typeof window !== 'undefined' && navigator.vibrate) {
       navigator.vibrate(50);
     }
   };
+
+  const resetForm = useCallback(() => {
+    setForm({ type: 'INCIDENT', description: '', zone: '', priority: 'medium', image: null, preview: null });
+    setFormError(null);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !loading) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [isOpen, loading]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -217,6 +239,12 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   };
 
   const handleSubmit = async () => {
+    if (isIncidentWithoutDescription) {
+      setFormError('La description est requise pour un incident.');
+      return;
+    }
+
+    setFormError(null);
     setLoading(true);
     triggerHaptic();
     try {
@@ -245,17 +273,18 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
         });
 
         setIsOpen(false);
-        setForm({ type: 'INCIDENT', description: '', zone: '', priority: 'medium', image: null, preview: null });
+        resetForm();
         showToast?.('Action enregistree hors ligne. Synchronisation au retour reseau.', 'success');
       } else {
         await submitAction(submission);
         setIsOpen(false);
-        setForm({ type: 'INCIDENT', description: '', zone: '', priority: 'medium', image: null, preview: null });
+        resetForm();
         showToast?.('Signalement transmis', 'success');
         navigator.vibrate?.([100, 50, 100]);
       }
     } catch (err) {
       console.error("Erreur de transmission", err);
+      setFormError('La transmission a echoue. Verifiez votre connexion puis reessayez.');
       showToast?.('Erreur lors de la transmission', 'error');
     } finally {
       setLoading(false);
@@ -263,7 +292,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   };
 
   if (!isOpen) return (
-    <button onClick={() => { setIsOpen(true); triggerHaptic(); }} className="bf-quickaction-fab fixed bottom-6 right-6 w-16 h-16 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50">
+    <button onClick={() => { setIsOpen(true); triggerHaptic(); }} className="bf-quickaction-fab fixed bottom-6 right-6 w-16 h-16 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50" aria-label="Ouvrir actions rapides terrain">
       <Plus size={32} />
     </button>
   );
@@ -273,7 +302,11 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
       <div className="bf-modal w-full max-w-lg p-6 space-y-6 shadow-2xl animate-in fade-in slide-in-from-bottom-10">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Signalement Rapide</h3>
-          <button onClick={() => setIsOpen(false)} className="bg-slate-100 p-2 rounded-full text-slate-500"><X size={20}/></button>
+          <button onClick={() => !loading && setIsOpen(false)} className="bg-slate-100 p-2 rounded-full text-slate-500 disabled:opacity-40" disabled={loading} aria-label="Fermer les actions rapides"><X size={20}/></button>
+        </div>
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-800">
+          {loading ? 'Transmission en cours... merci de patienter.' : `Action en cours: ${ACTION_CONFIG[form.type].label}.`}
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -316,6 +349,12 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
           <p className="text-sm font-bold text-slate-900">{ACTION_CONFIG[form.type].label}</p>
           <p className="mt-1 text-sm text-slate-600">{ACTION_CONFIG[form.type].helper}</p>
         </div>
+
+        {formError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            {formError}
+          </div>
+        ) : null}
 
         <div className="relative group">
           <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
@@ -364,15 +403,35 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
           className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-lg"
           rows={3}
           value={form.description}
-          onChange={(e) => setForm({...form, description: e.target.value})}
+          onChange={(e) => {
+            setForm({...form, description: e.target.value});
+            if (formError) setFormError(null);
+          }}
         />
+        <div className="flex items-center justify-between text-xs">
+          <span className={`${isIncidentWithoutDescription ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+            {form.type === 'INCIDENT' ? 'Description obligatoire' : 'Description recommandee'}
+          </span>
+          <span className="text-slate-500">{descriptionLength} caractere(s)</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => !loading && setIsOpen(false)}
+            className="w-1/3 rounded-xl border border-slate-200 py-4 text-sm font-semibold text-slate-700 disabled:opacity-40"
+            disabled={loading}
+          >
+            Annuler
+          </button>
         <button 
-          disabled={loading || (form.type === 'INCIDENT' && !form.description)}
+          disabled={loading || isIncidentWithoutDescription}
           onClick={handleSubmit}
-          className="w-full bg-slate-900 text-white py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:bg-slate-200 active:bg-blue-600"
+          className="w-2/3 bg-slate-900 text-white py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:bg-slate-200 active:bg-blue-600"
         >
           {loading ? <Loader2 className="animate-spin" /> : isOnline ? ACTION_CONFIG[form.type].submitLabel : 'Enregistrer hors ligne'}
         </button>
+        </div>
       </div>
     </div>
   );
