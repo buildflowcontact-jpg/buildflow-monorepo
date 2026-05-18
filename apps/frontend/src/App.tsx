@@ -23,7 +23,6 @@ import { ProjectProvider } from "./app/providers/ProjectProvider";
 import { PermissionProvider } from "./app/providers/PermissionProvider";
 import { AppContextProvider } from "./app/providers/AppContext";
 import { usePermission } from "./app/providers/PermissionProvider";
-import QuickActionPro from "./QuickActionPro";
 
 const AuthForm = React.lazy(() => import("./components/ui/AuthForm").then((module) => ({ default: module.AuthForm })));
 const GlobalDashboard = React.lazy(() => import("./features/dashboard/GlobalDashboard").then((module) => ({ default: module.GlobalDashboard })));
@@ -47,6 +46,7 @@ const AccountSettings = React.lazy(() => import("./modules/settings/components/A
 const AuditTrailPage = React.lazy(() => import("./modules/audit/pages/AuditTrailPage").then((module) => ({ default: module.AuditTrailPage })));
 const CreateProjectPanel = React.lazy(() => import("./components/shared/CreateProjectPanel").then((module) => ({ default: module.CreateProjectPanel })));
 const ScheduleModule = React.lazy(() => import("./modules/schedule/ScheduleModule").then((module) => ({ default: module.ScheduleModule })));
+const QuickActionPro = React.lazy(() => import("./QuickActionPro"));
 
 function SectionLoader({ label = "Chargement du module..." }: { label?: string }) {
   return (
@@ -64,7 +64,11 @@ function QuickActionDock({ projectId, activeDocumentId }: { projectId: string | 
     return null;
   }
 
-  return <QuickActionPro projectId={projectId} activeDocumentId={activeDocumentId ?? undefined} />;
+  return (
+    <Suspense fallback={null}>
+      <QuickActionPro projectId={projectId} activeDocumentId={activeDocumentId ?? undefined} />
+    </Suspense>
+  );
 }
 
 function App() {
