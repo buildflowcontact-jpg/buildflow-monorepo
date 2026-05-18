@@ -365,4 +365,98 @@ describe('CollisionDetectionService', () => {
       );
     });
   });
+
+  describe('getWorkerConflicts', () => {
+    it('should return unique unresolved conflicts from primary and conflicting sides', async () => {
+      const schedulesQuery: any = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      };
+      const primaryQuery: any = {
+        select: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        is: jest.fn(),
+      };
+      const conflictingQuery: any = {
+        select: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        is: jest.fn(),
+      };
+
+      (primaryQuery.is as any).mockResolvedValue({
+        data: [
+          { id: 'collision-1', primary_schedule_id: 'schedule-1' },
+          { id: 'collision-2', primary_schedule_id: 'schedule-2' },
+        ],
+        error: null,
+      });
+
+      (conflictingQuery.is as any).mockResolvedValue({
+        data: [
+          { id: 'collision-2', conflicting_schedule_id: 'schedule-2' },
+          { id: 'collision-3', conflicting_schedule_id: 'schedule-3' },
+        ],
+        error: null,
+      });
+
+      schedulesQuery.eq
+        .mockReturnValueOnce(schedulesQuery)
+        .mockResolvedValueOnce({
+          data: [{ id: 'schedule-1' }, { id: 'schedule-2' }],
+          error: null,
+        });
+
+      mockSupabase.from
+        .mockImplementationOnce(() => schedulesQuery)
+        .mockImplementationOnce(() => primaryQuery)
+        .mockImplementationOnce(() => conflictingQuery);
+
+      const result = await service.getWorkerConflicts('worker-1', 'project-1');
+
+      expect(result).toHaveLength(3);
+      expect(result.map((collision) => collision.id).sort()).toEqual([
+        'collision-1',
+        'collision-2',
+        'collision-3',
+      ]);
+    });
+
+    it('should return empty array when worker has no schedules in project', async () => {
+      const schedulesQuery: any = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      };
+
+      schedulesQuery.eq
+        .mockReturnValueOnce(schedulesQuery)
+        .mockResolvedValueOnce({ data: [], error: null });
+
+      mockSupabase.from.mockImplementationOnce(() => schedulesQuery);
+
+      const result = await service.getWorkerConflicts('worker-1', 'project-1');
+
+      expect(result).toEqual([]);
+      expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw when schedule lookup fails', async () => {
+      const schedulesQuery: any = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      };
+
+      schedulesQuery.eq
+        .mockReturnValueOnce(schedulesQuery)
+        .mockResolvedValueOnce({
+          data: null,
+          error: new Error('database failure'),
+        });
+
+      mockSupabase.from.mockImplementationOnce(() => schedulesQuery);
+
+      await expect(
+        service.getWorkerConflicts('worker-1', 'project-1')
+      ).rejects.toThrow('database failure');
+    });
+  });
 });
