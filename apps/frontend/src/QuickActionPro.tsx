@@ -68,6 +68,24 @@ interface OfflineQuickActionItem {
   };
 }
 
+interface RecentActionItem {
+  id: string;
+  type: QuickActionType;
+  description: string;
+  mode: 'online' | 'offline';
+  createdAt: number;
+}
+
+const OFFLINE_TYPE_LABELS: Record<string, string> = {
+  incident_create: 'Incident',
+  incident_update: 'Incident',
+  photo_upload: 'Photo',
+  task_update: 'Tache',
+  task_create: 'Tache',
+  delivery_create: 'Livraison',
+  event_log: 'Journal',
+};
+
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -97,6 +115,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { showToast } = useToast() || {};
+  const [recentActions, setRecentActions] = useState<RecentActionItem[]>([]);
 
   const [form, setForm] = useState({
     type: 'INCIDENT' as QuickActionType,
@@ -183,9 +202,16 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     await queryClient.invalidateQueries({ queryKey: ['project-events', effectiveProjectId] });
   }, [activeDocumentId, projectId, queryClient]);
 
-  const { pendingCount, isSyncing: isProcessing, forceSync: processQueue } = useOfflineQueue();
+  const {
+    items: queueItems,
+    pendingCount,
+    failedCount,
+    isSyncing: isProcessing,
+    forceSync: processQueue,
+    retryFailed,
+    clearFailed,
+  } = useOfflineQueue();
   const { isOnline } = useOfflineStatus();
-  const queue = { length: pendingCount };
 
   const addToQueueLocal = async (item: OfflineQuickActionItem) => {
     await addToQueue('incident_create', {
@@ -203,6 +229,13 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     return `${pendingCount} action${pendingCount > 1 ? 's' : ''} en attente`;
   }, [pendingCount]);
 
+  const syncingCount = useMemo(
+    () => queueItems.filter((item) => item.status === 'syncing').length,
+    [queueItems]
+  );
+
+  const recentQueueItems = useMemo(() => queueItems.slice(0, 4), [queueItems]);
+
   const descriptionLength = form.description.trim().length;
   const isIncidentWithoutDescription = form.type === 'INCIDENT' && descriptionLength === 0;
 
@@ -217,6 +250,19 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     setForm({ type: 'INCIDENT', description: '', zone: '', priority: 'medium', image: null, preview: null });
     setFormError(null);
   }, []);
+
+  const pushRecentAction = useCallback((mode: 'online' | 'offline') => {
+    setRecentActions((previous) => [
+      {
+        id: crypto.randomUUID(),
+        type: form.type,
+        description: form.description.trim() || ACTION_CONFIG[form.type].label,
+        mode,
+        createdAt: Date.now(),
+      },
+      ...previous,
+    ].slice(0, 5));
+  }, [form.description, form.type]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -274,11 +320,13 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
 
         setIsOpen(false);
         resetForm();
+        pushRecentAction('offline');
         showToast?.('Action enregistree hors ligne. Synchronisation au retour reseau.', 'success');
       } else {
         await submitAction(submission);
         setIsOpen(false);
         resetForm();
+        pushRecentAction('online');
         showToast?.('Signalement transmis', 'success');
         navigator.vibrate?.([100, 50, 100]);
       }
@@ -331,6 +379,93 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
             </button>
           ) : null}
         </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">Suivi synchronisation</p>
+            <div className="flex items-center gap-1 text-[11px]">
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">En attente: {pendingCount}</span>
+              <span className="rounded-full bg-cyan-100 px-2 py-0.5 font-semibold text-cyan-700">En cours: {syncingCount}</span>
+              <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">Echecs: {failedCount}</span>
+            </div>
+          </div>
+
+          {recentQueueItems.length > 0 ? (
+            <ul className="space-y-2 text-xs">
+              {recentQueueItems.map((item) => (
+                <li key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-700 truncate">{OFFLINE_TYPE_LABELS[item.type] ?? item.type}</p>
+                    <p className="text-slate-500 truncate">{String(item.payload.description ?? 'Action sans description')}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${
+                    item.status === 'failed'
+                      ? 'bg-red-100 text-red-700'
+                      : item.status === 'syncing'
+                        ? 'bg-cyan-100 text-cyan-700'
+                        : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {item.status === 'failed' ? 'Echec' : item.status === 'syncing' ? 'Sync' : 'Attente'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-500">Aucune action en file hors ligne.</p>
+          )}
+
+          {(failedCount > 0 || pendingCount > 0) ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void processQueue()}
+                disabled={!isOnline || isProcessing}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:text-slate-300"
+              >
+                Forcer sync
+              </button>
+              {failedCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => void retryFailed()}
+                  disabled={!isOnline || isProcessing}
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 disabled:text-red-300"
+                >
+                  Relancer echecs
+                </button>
+              ) : null}
+              {failedCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => void clearFailed()}
+                  disabled={isProcessing}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:text-slate-300"
+                >
+                  Nettoyer echecs
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {recentActions.length > 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 space-y-2">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">Actions recentes</p>
+            <ul className="space-y-2 text-xs">
+              {recentActions.map((item) => (
+                <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-700 truncate">{ACTION_CONFIG[item.type].label}</p>
+                    <p className="text-slate-500 truncate">{item.description}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${item.mode === 'online' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {item.mode === 'online' ? 'Envoye' : 'Hors ligne'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3">
           {ACTION_TYPES.map((actionType) => (
