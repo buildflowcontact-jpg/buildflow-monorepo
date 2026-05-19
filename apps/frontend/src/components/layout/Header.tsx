@@ -14,6 +14,8 @@ interface HeaderProps {
 }
 
 export function Header({ userRole, email, onSignOut, statusLabel, projectId }: HeaderProps) {
+  const shortEmail = email.length > 28 ? `${email.slice(0, 25)}...` : email;
+
   return (
     <header className="bf-header sticky top-0 z-40">
       <div className="w-full px-4 md:px-8 xl:px-10 py-3 flex items-center justify-between gap-4">
@@ -25,7 +27,7 @@ export function Header({ userRole, email, onSignOut, statusLabel, projectId }: H
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 text-xs">
+        <div className="hidden md:flex items-center gap-2 text-xs min-w-0">
           <ProjectSwitcher />
           <SearchGlobal />
           <OfflineBadge />
@@ -33,7 +35,7 @@ export function Header({ userRole, email, onSignOut, statusLabel, projectId }: H
           <ThemePicker />
           <span className="bf-badge bf-badge-status px-2 py-1 rounded-full font-semibold">{statusLabel}</span>
           <span className="bf-badge px-2 py-1 rounded-full font-semibold">{userRole}</span>
-          <span className="bf-badge px-2 py-1 rounded-full">{email}</span>
+          <span className="bf-badge px-2 py-1 rounded-full max-w-[220px] truncate" title={email}>{shortEmail}</span>
         </div>
 
         <div className="md:hidden flex items-center gap-2">

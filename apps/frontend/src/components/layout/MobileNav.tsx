@@ -52,7 +52,7 @@ export function MobileNav() {
 
       {visibleAdvancedItems.length > 0 ? (
         <div className="space-y-1">
-          <p className="px-1 text-[10px] uppercase tracking-[0.12em] bf-text-muted font-bold">Avances</p>
+          <p className="px-1 text-[10px] uppercase tracking-[0.12em] bf-text-muted font-bold">Modules avances</p>
           <div className="flex gap-1 overflow-x-auto pb-1">
             {visibleAdvancedItems.map((item) => (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => `text-xs text-center whitespace-nowrap ${viewLinkClass(isActive)}`}>

@@ -92,6 +92,7 @@ export function FinanceDashboard({ projectId }: Props) {
 
   const maxMonthlyExpense = Math.max(...dashboard.monthlyExpenseTrend.map((row) => row.amount), 1);
   const isLoading = budgetsLoading || invoicesLoading || expensesLoading;
+  const hasAnyData = budgets.length > 0 || invoices.length > 0 || expenses.length > 0;
 
   const alerts = [
     dashboard.budgetUsagePercent >= 90 ? `Alerte budget: ${dashboard.budgetUsagePercent}% du budget consommé.` : null,
@@ -144,6 +145,12 @@ export function FinanceDashboard({ projectId }: Props) {
       }
     >
       <div className="space-y-3">
+        {!isLoading && !hasAnyData ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm bf-text-muted">
+            Aucune donnee financiere disponible pour ce projet. Commencez par ajouter un budget, une facture ou une depense.
+          </div>
+        ) : null}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="bf-card-soft p-3">
             <p className="text-xs uppercase bf-text-muted">Budget total</p>

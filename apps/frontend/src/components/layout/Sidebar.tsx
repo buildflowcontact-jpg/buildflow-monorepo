@@ -43,7 +43,7 @@ export function Sidebar() {
   return (
     <nav className="hidden md:block mb-6 space-y-3" aria-label="Navigation principale modules">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted mb-2 font-bold">Essentiels</p>
+        <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted mb-2 font-bold">Modules essentiels</p>
         <div className="flex items-center gap-2 flex-wrap">
           {visibleEssentialItems.map((item) => (
             <NavLink key={item.to} to={item.to} className={({ isActive }) => viewLinkClass(isActive)}>
@@ -55,7 +55,7 @@ export function Sidebar() {
 
       {visibleAdvancedItems.length > 0 ? (
         <div>
-          <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted mb-2 font-bold">Avances</p>
+          <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted mb-2 font-bold">Modules avances</p>
           <div className="flex items-center gap-2 flex-wrap">
             {visibleAdvancedItems.map((item) => (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => viewLinkClass(isActive)}>
