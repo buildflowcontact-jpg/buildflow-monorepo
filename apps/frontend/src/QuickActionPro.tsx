@@ -112,7 +112,10 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [queueFeedback, setQueueFeedback] = useState<string | null>(null);
+  const [lastQueueCheckAt, setLastQueueCheckAt] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previousQueueTotalRef = useRef(0);
   const queryClient = useQueryClient();
   const { showToast } = useToast() || {};
   const [recentActions, setRecentActions] = useState<RecentActionItem[]>([]);
@@ -265,6 +268,10 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   }, [failedCount, isOnline, pendingCount, syncingCount]);
 
   const recentQueueItems = useMemo(() => queueItems.slice(0, 4), [queueItems]);
+  const failedQueueItems = useMemo(
+    () => queueItems.filter((item) => item.status === 'failed').slice(0, 2),
+    [queueItems]
+  );
 
   const descriptionLength = form.description.trim().length;
   const isIncidentWithoutDescription = form.type === 'INCIDENT' && descriptionLength === 0;
@@ -306,6 +313,38 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
   }, [isOpen, loading]);
+
+  useEffect(() => {
+    if (previousQueueTotalRef.current > 0 && queueTotal === 0 && isOnline && !isProcessing) {
+      setLastQueueCheckAt(Date.now());
+      setQueueFeedback('Toutes les actions locales ont ete synchronisees.');
+    }
+
+    if (failedCount > 0 && failedCount !== previousQueueTotalRef.current && !isProcessing) {
+      setLastQueueCheckAt(Date.now());
+      setQueueFeedback('Des actions demandent une verification avant relance.');
+    }
+
+    previousQueueTotalRef.current = queueTotal;
+  }, [failedCount, isOnline, isProcessing, queueTotal]);
+
+  const handleForceSync = useCallback(async () => {
+    setLastQueueCheckAt(Date.now());
+    setQueueFeedback(isOnline ? 'Verification immediate de la file lancee.' : 'Reconnexion necessaire pour synchroniser.');
+    await processQueue();
+  }, [isOnline, processQueue]);
+
+  const handleRetryFailed = useCallback(async () => {
+    setLastQueueCheckAt(Date.now());
+    setQueueFeedback('Relance des actions en echec en cours.');
+    await retryFailed();
+  }, [retryFailed]);
+
+  const handleClearFailed = useCallback(async () => {
+    await clearFailed();
+    setLastQueueCheckAt(Date.now());
+    setQueueFeedback('Les echecs ont ete retires de la file locale.');
+  }, [clearFailed]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -370,7 +409,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   };
 
   if (!isOpen) return (
-    <button onClick={() => { setIsOpen(true); triggerHaptic(); }} className="bf-quickaction-fab fixed bottom-5 right-5 sm:bottom-6 sm:right-6 w-14 h-14 sm:w-16 sm:h-16 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50" aria-label="Ouvrir actions rapides terrain">
+    <button onClick={() => { setIsOpen(true); triggerHaptic(); }} className="bf-quickaction-fab fixed bottom-5 right-5 sm:bottom-6 sm:right-6 w-14 h-14 sm:w-16 sm:h-16 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-[55]" aria-label="Ouvrir actions rapides terrain">
       <Plus size={32} />
     </button>
   );
@@ -403,7 +442,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
           {isOnline && pendingCount > 0 ? (
             <button
               type="button"
-              onClick={() => void processQueue()}
+              onClick={() => void handleForceSync()}
               disabled={isProcessing}
               className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:text-slate-400"
             >
@@ -447,7 +486,28 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
                 style={{ width: `${queueTotal === 0 ? 100 : Math.min(100, (syncingCount + pendingCount) * 20 + failedCount * 30)}%` }}
               />
             </div>
+            {lastQueueCheckAt ? (
+              <p className="mt-2 text-[11px] opacity-80">
+                Dernier controle: {new Date(lastQueueCheckAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            ) : null}
+            {queueFeedback ? <p className="mt-1 text-[11px] font-medium">{queueFeedback}</p> : null}
           </div>
+
+          {failedQueueItems.length > 0 ? (
+            <div className="space-y-2">
+              {failedQueueItems.map((item) => (
+                <div key={`failed-${item.id}`} className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-800">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold truncate">{OFFLINE_TYPE_LABELS[item.type] ?? item.type}</p>
+                    <span className="shrink-0 rounded-full bg-white px-2 py-0.5 font-semibold text-red-700">Tentative {item.retryCount + 1}</span>
+                  </div>
+                  <p className="mt-1 truncate">{String(item.payload.description ?? 'Action sans description')}</p>
+                  {item.errorMessage ? <p className="mt-1 text-[11px] text-red-700/90">Cause: {item.errorMessage}</p> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {recentQueueItems.length > 0 ? (
             <ul className="space-y-2 text-xs">
@@ -477,18 +537,18 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => void processQueue()}
+                onClick={() => void handleForceSync()}
                 disabled={!isOnline || isProcessing}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:text-slate-300"
+                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:text-slate-300"
               >
                 Forcer sync
               </button>
               {failedCount > 0 ? (
                 <button
                   type="button"
-                  onClick={() => void retryFailed()}
+                  onClick={() => void handleRetryFailed()}
                   disabled={!isOnline || isProcessing}
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 disabled:text-red-300"
+                  className="flex-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:text-red-300"
                 >
                   Relancer echecs
                 </button>
@@ -496,9 +556,9 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
               {failedCount > 0 ? (
                 <button
                   type="button"
-                  onClick={() => void clearFailed()}
+                  onClick={() => void handleClearFailed()}
                   disabled={isProcessing}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:text-slate-300"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 disabled:text-slate-300 sm:w-auto"
                 >
                   Nettoyer echecs
                 </button>

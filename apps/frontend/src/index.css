@@ -282,6 +282,28 @@ h1 {
   box-shadow: 0 -10px 30px -24px rgba(15, 23, 42, 0.65);
 }
 
+.bf-mobile-nav-scroller {
+  scrollbar-width: none;
+}
+
+.bf-mobile-nav-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.bf-mobile-nav-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+}
+
+.bf-header-mobile-panel {
+  border: var(--bf-border-width) solid var(--bf-surface-border);
+  background: color-mix(in srgb, var(--bf-surface-bg) 88%, white);
+  box-shadow: var(--bf-surface-shadow);
+}
+
 .bf-theme-picker {
   display: inline-flex;
   align-items: center;

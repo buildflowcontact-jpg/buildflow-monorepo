@@ -215,7 +215,7 @@ function App() {
           projectId={resolvedProjectId}
         />
 
-        <div className="w-full px-4 md:px-8 xl:px-10 pt-4 md:pt-6 pb-28 md:pb-8">
+        <div className="w-full px-4 md:px-8 xl:px-10 pt-4 md:pt-6 pb-32 md:pb-8">
           <ProjectBanner
             label="Projet"
             projectName={selectedProject?.name ?? (isProjectsLoading ? 'Chargement du projet...' : 'Aucun projet disponible')}
