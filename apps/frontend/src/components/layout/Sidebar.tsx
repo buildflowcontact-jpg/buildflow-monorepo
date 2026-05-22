@@ -38,8 +38,8 @@ export function Sidebar({ projectName, projects = [], selectedProjectId, onProje
   const visibleEssentialItems = ESSENTIAL_ITEMS.filter((item) => can(item.permission));
 
   return (
-    <aside className="hidden md:flex md:w-[280px] md:flex-shrink-0">
-      <nav className="surface-panel sticky top-4 w-full self-start px-4 py-5 space-y-5" aria-label="Navigation principale modules et projets">
+    <aside className="hidden md:flex md:w-[280px] md:flex-shrink-0 md:h-[calc(100vh-3rem)]">
+      <nav className="surface-panel w-full h-full overflow-y-auto px-4 py-5 space-y-5" aria-label="Navigation principale modules et projets">
         <div className="space-y-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted mb-1 font-bold">Projet actif</p>

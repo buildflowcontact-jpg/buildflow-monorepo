@@ -205,8 +205,8 @@ function App() {
           <ConflictModal />
         </Suspense>
 
-        <div className="w-full px-4 md:px-6 xl:px-8 pt-4 md:pt-6 pb-32 md:pb-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <div className="w-full min-h-screen px-4 md:px-6 xl:px-8 pt-4 md:pt-6 pb-32 md:pb-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-stretch md:min-h-[calc(100vh-3rem)]">
           <Sidebar
             projectName={selectedProject?.name ?? (isProjectsLoading ? 'Chargement du projet...' : 'Aucun projet disponible')}
             projects={projectOptions}
@@ -215,7 +215,7 @@ function App() {
             onSignOut={signOut}
           />
 
-          <main className="min-w-0 flex-1 space-y-6">
+          <main className="min-w-0 flex-1 space-y-6 md:h-[calc(100vh-3rem)] md:overflow-y-auto md:pr-1">
             {isProjectsLoading ? (
               <SectionLoader label="Chargement des projets..." />
             ) : null}
