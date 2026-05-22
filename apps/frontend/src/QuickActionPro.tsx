@@ -234,6 +234,36 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
     [queueItems]
   );
 
+  const queueTotal = pendingCount + syncingCount + failedCount;
+  const queueState = useMemo(() => {
+    if (failedCount > 0) {
+      return {
+        tone: 'danger' as const,
+        title: 'Synchronisation en erreur',
+        detail: `${failedCount} action${failedCount > 1 ? 's' : ''} en echec.`,
+      };
+    }
+    if (syncingCount > 0) {
+      return {
+        tone: 'info' as const,
+        title: 'Synchronisation en cours',
+        detail: `${syncingCount} action${syncingCount > 1 ? 's' : ''} en traitement.`,
+      };
+    }
+    if (pendingCount > 0) {
+      return {
+        tone: 'waiting' as const,
+        title: isOnline ? 'Actions en attente de sync' : 'Mode hors ligne actif',
+        detail: `File locale: ${pendingCount} element${pendingCount > 1 ? 's' : ''}.`,
+      };
+    }
+    return {
+      tone: 'ok' as const,
+      title: 'Synchronisation a jour',
+      detail: 'Aucune action en attente.',
+    };
+  }, [failedCount, isOnline, pendingCount, syncingCount]);
+
   const recentQueueItems = useMemo(() => queueItems.slice(0, 4), [queueItems]);
 
   const descriptionLength = form.description.trim().length;
@@ -389,6 +419,33 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">En attente: {pendingCount}</span>
               <span className="rounded-full bg-cyan-100 px-2 py-0.5 font-semibold text-cyan-700">En cours: {syncingCount}</span>
               <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">Echecs: {failedCount}</span>
+            </div>
+          </div>
+
+          <div className={`rounded-xl border px-3 py-2 text-xs ${
+            queueState.tone === 'danger'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : queueState.tone === 'info'
+                ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                : queueState.tone === 'waiting'
+                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+          }`}>
+            <p className="font-semibold">{queueState.title}</p>
+            <p className="mt-0.5">{queueState.detail}</p>
+            <div className="mt-2 h-1.5 rounded-full bg-black/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  queueState.tone === 'danger'
+                    ? 'bg-red-500'
+                    : queueState.tone === 'info'
+                      ? 'bg-cyan-500'
+                      : queueState.tone === 'waiting'
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
+                }`}
+                style={{ width: `${queueTotal === 0 ? 100 : Math.min(100, (syncingCount + pendingCount) * 20 + failedCount * 30)}%` }}
+              />
             </div>
           </div>
 
