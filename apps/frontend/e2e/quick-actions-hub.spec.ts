@@ -62,11 +62,13 @@ test.describe('Quick actions hub', () => {
     await page.getByRole('button', { name: 'Ouvrir actions rapides terrain' }).click();
     await expect(page.getByText('1 action en attente')).toBeVisible();
     await expect(page.getByText('En attente: 1')).toBeVisible();
+    await expect(page.getByText('Mode hors ligne actif')).toBeVisible();
     await expect(page.getByText('Attente', { exact: true })).toBeVisible();
 
     await page.context().setOffline(false);
     await expect(page.locator('span').filter({ hasText: /^En ligne$/ }).first()).toBeVisible();
     await expect(page.getByText('Aucune action en file hors ligne.')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('En attente: 0')).toBeVisible();
+    await expect(page.getByText('Synchronisation a jour')).toBeVisible();
   });
 });
