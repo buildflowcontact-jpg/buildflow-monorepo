@@ -10,18 +10,18 @@
 
 :root {
   --bf-text-primary: #0a1020;
-  --bf-text-muted: #334155;
+  --bf-text-muted: #1f2937;
   --bf-surface-bg: #ffffff;
-  --bf-surface-border: rgba(15, 23, 42, 0.3);
+  --bf-surface-border: rgba(15, 23, 42, 0.44);
   --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.28);
   --bf-header-bg: rgba(255, 255, 255, 0.9);
   --bf-header-border: rgba(15, 23, 42, 0.14);
   --bf-nav-bg: linear-gradient(145deg, #0f172a, #1d4ed8);
   --bf-nav-text: #ffffff;
   --bf-nav-muted: #1f2937;
-  --bf-nav-hover: rgba(30, 64, 175, 0.2);
-  --bf-nav-tint: rgba(30, 64, 175, 0.2);
-  --bf-button-border: rgba(15, 23, 42, 0.3);
+  --bf-nav-hover: rgba(30, 64, 175, 0.3);
+  --bf-nav-tint: rgba(30, 64, 175, 0.28);
+  --bf-button-border: rgba(15, 23, 42, 0.45);
   --bf-button-bg: rgba(255, 255, 255, 0.98);
   --bf-button-text: #0f172a;
   --bf-badge-bg: rgba(15, 23, 42, 0.08);
@@ -42,9 +42,9 @@
 
 body.ui-theme-industrial {
   --bf-text-primary: #0b1324;
-  --bf-text-muted: #1e293b;
+  --bf-text-muted: #0f172a;
   --bf-surface-bg: #ffffff;
-  --bf-surface-border: rgba(15, 23, 42, 0.24);
+  --bf-surface-border: rgba(15, 23, 42, 0.5);
   --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.24);
   --bf-header-bg: #ffffff;
   --bf-header-border: rgba(15, 23, 42, 0.7);
@@ -72,18 +72,18 @@ body.ui-theme-industrial {
 
 body.ui-theme-cockpit {
   --bf-text-primary: #0f172a;
-  --bf-text-muted: #334155;
+  --bf-text-muted: #1e293b;
   --bf-surface-bg: #ffffff;
-  --bf-surface-border: rgba(100, 116, 139, 0.5);
+  --bf-surface-border: rgba(51, 65, 85, 0.52);
   --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.24);
   --bf-header-bg: rgba(255, 255, 255, 0.78);
   --bf-header-border: rgba(148, 163, 184, 0.48);
   --bf-nav-bg: #0f172a;
   --bf-nav-text: #ffffff;
   --bf-nav-muted: #334155;
-  --bf-nav-hover: rgba(148, 163, 184, 0.38);
-  --bf-nav-tint: rgba(15, 23, 42, 0.16);
-  --bf-button-border: rgba(100, 116, 139, 0.6);
+  --bf-nav-hover: rgba(100, 116, 139, 0.5);
+  --bf-nav-tint: rgba(15, 23, 42, 0.24);
+  --bf-button-border: rgba(51, 65, 85, 0.65);
   --bf-button-bg: rgba(255, 255, 255, 0.9);
   --bf-button-text: #334155;
   --bf-badge-bg: rgba(148, 163, 184, 0.2);
@@ -102,18 +102,18 @@ body.ui-theme-cockpit {
 
 body.ui-theme-streamline {
   --bf-text-primary: #0f172a;
-  --bf-text-muted: #334155;
+  --bf-text-muted: #1e293b;
   --bf-surface-bg: #ffffff;
-  --bf-surface-border: rgba(100, 116, 139, 0.5);
+  --bf-surface-border: rgba(51, 65, 85, 0.54);
   --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.24);
   --bf-header-bg: rgba(248, 250, 252, 0.95);
   --bf-header-border: rgba(148, 163, 184, 0.35);
   --bf-nav-bg: #2563eb;
   --bf-nav-text: #ffffff;
   --bf-nav-muted: #1e293b;
-  --bf-nav-hover: rgba(37, 99, 235, 0.24);
-  --bf-nav-tint: rgba(37, 99, 235, 0.2);
-  --bf-button-border: rgba(100, 116, 139, 0.56);
+  --bf-nav-hover: rgba(37, 99, 235, 0.34);
+  --bf-nav-tint: rgba(37, 99, 235, 0.28);
+  --bf-button-border: rgba(51, 65, 85, 0.62);
   --bf-button-bg: #ffffff;
   --bf-button-text: #1e293b;
   --bf-badge-bg: rgba(37, 99, 235, 0.12);
@@ -239,14 +239,14 @@ h1 {
 
 .bf-nav-link:hover {
   background: var(--bf-nav-hover);
-  border-color: rgba(59, 130, 246, 0.42);
+  border-color: rgba(59, 130, 246, 0.58);
   transform: translateY(-1px);
 }
 
 .bf-nav-link-active {
   background: var(--bf-nav-bg);
   color: var(--bf-nav-text);
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: rgba(15, 23, 42, 0.36);
   box-shadow: 0 14px 26px -18px rgba(30, 64, 175, 0.72);
   transform: translateY(-1px);
 }
@@ -348,7 +348,7 @@ h1 {
 .bf-select:focus,
 .bf-textarea:focus {
   border-color: var(--bf-nav-bg);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bf-nav-tint) 80%, white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--bf-nav-tint) 85%, white);
 }
 
 .bf-primary-button {
@@ -397,7 +397,7 @@ h1 {
 
 .bf-card-soft:hover {
   transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.24);
+  border-color: rgba(59, 130, 246, 0.44);
   box-shadow: 0 20px 34px -28px rgba(30, 64, 175, 0.7);
 }
 
@@ -464,6 +464,7 @@ h1 {
 .bf-table th {
   background: var(--bf-nav-tint);
   color: var(--bf-text-primary);
+  font-weight: 700;
 }
 
 .bf-table td,
