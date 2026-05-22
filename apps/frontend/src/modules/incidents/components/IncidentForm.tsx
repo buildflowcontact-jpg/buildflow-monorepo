@@ -11,6 +11,9 @@ interface IncidentFormProps {
 }
 
 export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess }) => {
+  const fieldClassName = 'bf-input w-full';
+  const selectClassName = 'bf-select w-full rounded-xl px-3 py-2';
+  const areaClassName = 'bf-textarea w-full rounded-xl px-3 py-2';
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<IncidentSeverity>('medium');
@@ -78,7 +81,7 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={fieldClassName}
           placeholder="Décrire l'incident en quelques mots"
         />
       </div>
@@ -89,7 +92,7 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={areaClassName}
           placeholder="Détails supplémentaires (optionnel)"
         />
       </div>
@@ -99,7 +102,7 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
         <select
           value={severity}
           onChange={(e) => setSeverity(e.target.value as IncidentSeverity)}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={selectClassName}
         >
           <option value="low">Faible</option>
           <option value="medium">Moyenne</option>
@@ -115,17 +118,17 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
           accept="image/*"
           capture="environment"
           onChange={(e) => setPhotos((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-2"
+          className={`${fieldClassName} mb-2`}
         />
         <input
           type="file"
           multiple
           accept="image/*"
-          onChange={(e) => setPhotos(Array.from(e.target.files ?? []))}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+          onChange={(e) => setPhotos((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
+          className={fieldClassName}
         />
         {photos.length > 0 ? (
-          <p className="text-xs text-gray-500 mt-1">{photos.length} photo(s) seront jointes a l'incident</p>
+          <p className="text-xs text-gray-500 mt-1">{photos.length} photo(s) seront jointes a l'incident (capture et galerie cumulees)</p>
         ) : null}
       </div>
 
@@ -136,7 +139,7 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ projectId, onSuccess
       <button
         type="submit"
         disabled={isPending || !title.trim()}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md text-sm transition-colors"
+        className="w-full bf-primary-btn disabled:opacity-50 py-2 px-4 rounded-lg text-sm"
       >
         {isPending ? 'Création...' : 'Signaler l\'incident'}
       </button>

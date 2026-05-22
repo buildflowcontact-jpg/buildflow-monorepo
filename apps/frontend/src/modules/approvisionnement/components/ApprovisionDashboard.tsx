@@ -182,6 +182,43 @@ export function ApprovisionDashboard({ projectId }: Props) {
     >
       <div className="space-y-3">
         <div className="bf-card-soft p-3">
+          <div className="flex items-end gap-1 border-b border-slate-200">
+            <button
+              type="button"
+              onClick={() => setMainTab('orders')}
+              className={`px-4 py-2 rounded-t-lg text-sm font-semibold border border-b-0 transition-colors ${
+                mainTab === 'orders' ? 'bg-white border-slate-300 bf-text-primary' : 'bg-slate-100 border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Commandes
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('deliveries')}
+              className={`px-4 py-2 rounded-t-lg text-sm font-semibold border border-b-0 transition-colors ${
+                mainTab === 'deliveries' ? 'bg-white border-slate-300 bf-text-primary' : 'bg-slate-100 border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Livraisons
+            </button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {mainTab === 'orders' ? (
+              <>
+                <Button type="button" variant={orderView === 'to_order' ? 'default' : 'ghost'} size="sm" onClick={() => setOrderView('to_order')}>A passer</Button>
+                <Button type="button" variant={orderView === 'in_progress' ? 'default' : 'ghost'} size="sm" onClick={() => setOrderView('in_progress')}>En cours</Button>
+                <Button type="button" variant={orderView === 'delivered' ? 'default' : 'ghost'} size="sm" onClick={() => setOrderView('delivered')}>Livrees</Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" variant={deliveryView === 'pending' ? 'default' : 'ghost'} size="sm" onClick={() => setDeliveryView('pending')}>En attente</Button>
+                <Button type="button" variant={deliveryView === 'done' ? 'default' : 'ghost'} size="sm" onClick={() => setDeliveryView('done')}>Effectuees</Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="bf-card-soft p-3">
           <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Alertes commandes en retard</p>
           {lateOrderList.length === 0 ? (
             <p className="text-sm text-green-700">Aucune commande en retard.</p>

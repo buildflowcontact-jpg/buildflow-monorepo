@@ -1,20 +1,21 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { AlertTriangle, CalendarDays, ClipboardList, Home, Wrench } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ClipboardList, FileText, Home } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { usePermission } from '@/app/providers/PermissionProvider';
 
 type NavItem = {
   permission: Parameters<ReturnType<typeof usePermission>['can']>[0];
   to: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 };
 
 const ESSENTIAL_ITEMS: NavItem[] = [
   { permission: 'module:dashboard', to: '/dashboard', label: 'Accueil', icon: Home },
   { permission: 'module:piloter', to: '/taches', label: 'Taches', icon: ClipboardList },
   { permission: 'module:planifier', to: '/planifier', label: 'Planning', icon: CalendarDays },
-  { permission: 'module:executer', to: '/executer', label: 'Execution', icon: Wrench },
+  { permission: 'module:executer', to: '/documents', label: 'Documents', icon: FileText },
   { permission: 'module:terrain', to: '/incidents', label: 'Incidents', icon: AlertTriangle },
 ];
 

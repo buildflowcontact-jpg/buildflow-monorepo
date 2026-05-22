@@ -45,7 +45,7 @@ test.describe('Navigation canonique', () => {
 
   test('expose les liens canoniques dans la navigation', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByRole('link', { name: 'Execution' }).first()).toHaveAttribute('href', '/executer');
-    await expect(page.getByRole('link', { name: 'Incidents terrain' }).first()).toHaveAttribute('href', '/incidents');
+    await expect(page.getByRole('link', { name: 'Documents' }).first()).toHaveAttribute('href', '/documents');
+    await expect(page.getByRole('link', { name: 'Incidents' }).first()).toHaveAttribute('href', '/incidents');
   });
 });

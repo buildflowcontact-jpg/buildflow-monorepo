@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
-
 type TaskStatus = 'todo' | 'in_progress' | 'done';
 type TaskPriority = 'low' | 'medium' | 'high';
 
@@ -14,6 +13,7 @@ interface SubTask {
 interface Task {
   id: string;
   title: string;
+  description: string;
   assignee: string;
   startDate: string;
   dueDate: string;
@@ -25,7 +25,8 @@ interface Task {
 const INITIAL_TASKS: Task[] = [
   {
     id: 't-1',
-    title: 'Préparer la zone de coulage',
+    title: 'Preparer la zone de coulage',
+    description: 'Verifier les acces et installer la signaletique.',
     assignee: 'Lina',
     startDate: '2026-05-10',
     dueDate: '2026-05-14',
@@ -35,7 +36,8 @@ const INITIAL_TASKS: Task[] = [
   },
   {
     id: 't-2',
-    title: 'Contrôle ferraillage niveau -1',
+    title: 'Controle ferraillage niveau -1',
+    description: 'Point de controle qualite avant coulage.',
     assignee: 'Marc',
     startDate: '2026-05-12',
     dueDate: '2026-05-16',
@@ -45,7 +47,8 @@ const INITIAL_TASKS: Task[] = [
   },
   {
     id: 't-3',
-    title: 'Validation plan de réservation',
+    title: 'Validation plan de reservation',
+    description: 'Validation finale avec bureau methodes.',
     assignee: 'Ines',
     startDate: '2026-05-05',
     dueDate: '2026-05-10',
@@ -58,73 +61,94 @@ const INITIAL_TASKS: Task[] = [
 const STATUS_TITLE: Record<TaskStatus, string> = {
   todo: 'A faire',
   in_progress: 'En cours',
-  done: 'Terminée',
-};
-
-const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  low: 'Faible',
-  medium: 'Moyenne',
-  high: 'Haute',
+  done: 'Terminee',
 };
 
 export function Taches() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editTaskId, setEditTaskId] = useState<string | null>(null);
-  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
-  const [subTaskInput, setSubTaskInput] = useState<Record<string, string>>({});
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [subTaskInput, setSubTaskInput] = useState('');
 
-  // Form states
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [assignee, setAssignee] = useState('');
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [status, setStatus] = useState<TaskStatus>('todo');
 
   const grouped = useMemo(() => {
     const next: Record<TaskStatus, Task[]> = { todo: [], in_progress: [], done: [] };
     tasks.forEach((task) => next[task.status].push(task));
-    (Object.keys(next) as TaskStatus[]).forEach((status) => {
-      next[status].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    });
     return next;
   }, [tasks]);
 
-  const openEditModal = (task: Task) => {
-    setEditTaskId(task.id);
-    setTitle(task.title);
-    setAssignee(task.assignee);
-    setStartDate(task.startDate);
-    setDueDate(task.dueDate);
-    setPriority(task.priority);
-  };
+  const selectedTask = useMemo(
+    () => tasks.find((task) => task.id === selectedTaskId) ?? null,
+    [selectedTaskId, tasks]
+  );
 
-  const saveEditTask = () => {
-    setTasks((prev) => prev.map((task) =>
-      task.id === editTaskId
-        ? { ...task, title: title.trim(), assignee: assignee.trim(), startDate, dueDate, priority }
-        : task
-    ));
-    setEditTaskId(null);
+  const resetForm = () => {
     setTitle('');
+    setDescription('');
     setAssignee('');
     setStartDate('');
     setDueDate('');
     setPriority('medium');
+    setStatus('todo');
+    setSubTaskInput('');
   };
 
-  const openDeleteModal = (taskId: string) => setDeleteTaskId(taskId);
-  const confirmDeleteTask = () => {
-    setTasks((prev) => prev.filter((task) => task.id !== deleteTaskId));
-    setDeleteTaskId(null);
+  const openTaskModal = (task: Task) => {
+    setSelectedTaskId(task.id);
+    setTitle(task.title);
+    setDescription(task.description);
+    setAssignee(task.assignee);
+    setStartDate(task.startDate);
+    setDueDate(task.dueDate);
+    setPriority(task.priority);
+    setStatus(task.status);
+    setSubTaskInput('');
+  };
+
+  const closeTaskModal = () => {
+    setSelectedTaskId(null);
+    resetForm();
+  };
+
+  const saveTask = () => {
+    if (!selectedTaskId || !title.trim() || !assignee.trim() || !startDate || !dueDate) return;
+    setTasks((prev) => prev.map((task) => (
+      task.id === selectedTaskId
+        ? {
+            ...task,
+            title: title.trim(),
+            description: description.trim(),
+            assignee: assignee.trim(),
+            startDate,
+            dueDate,
+            priority,
+            status,
+          }
+        : task
+    )));
+    closeTaskModal();
+  };
+
+  const deleteTask = () => {
+    if (!selectedTaskId) return;
+    setTasks((prev) => prev.filter((task) => task.id !== selectedTaskId));
+    closeTaskModal();
   };
 
   const createTask = () => {
-    if (!title.trim() || !assignee.trim() || !dueDate || !startDate) return;
+    if (!title.trim() || !assignee.trim() || !startDate || !dueDate) return;
     setTasks((prev) => [
       {
         id: `t-${Date.now()}`,
         title: title.trim(),
+        description: description.trim(),
         assignee: assignee.trim(),
         startDate,
         dueDate,
@@ -134,193 +158,193 @@ export function Taches() {
       },
       ...prev,
     ]);
-    setTitle('');
-    setAssignee('');
-    setStartDate('');
-    setDueDate('');
-    setPriority('medium');
+    resetForm();
     setIsCreateModalOpen(false);
   };
 
-  const moveTask = (taskId: string, status: TaskStatus) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status } : task)));
+  const addSubTask = () => {
+    if (!selectedTaskId || !subTaskInput.trim()) return;
+    setTasks((prev) => prev.map((task) => (
+      task.id === selectedTaskId
+        ? {
+            ...task,
+            subTasks: [...task.subTasks, { id: `st-${Date.now()}`, title: subTaskInput.trim(), done: false }],
+          }
+        : task
+    )));
+    setSubTaskInput('');
   };
 
-  const addSubTask = (taskId: string) => {
-    const value = (subTaskInput[taskId] || '').trim();
-    if (!value) return;
-    setTasks((prev) => prev.map((task) =>
-      task.id === taskId
-        ? { ...task, subTasks: [...task.subTasks, { id: `st-${Date.now()}`, title: value, done: false }] }
+  const toggleSubTask = (subTaskId: string) => {
+    if (!selectedTaskId) return;
+    setTasks((prev) => prev.map((task) => (
+      task.id === selectedTaskId
+        ? {
+            ...task,
+            subTasks: task.subTasks.map((subTask) => (
+              subTask.id === subTaskId ? { ...subTask, done: !subTask.done } : subTask
+            )),
+          }
         : task
-    ));
-    setSubTaskInput((prev) => ({ ...prev, [taskId]: '' }));
-  };
-
-  const toggleSubTask = (taskId: string, subTaskId: string) => {
-    setTasks((prev) => prev.map((task) =>
-      task.id === taskId
-        ? { ...task, subTasks: task.subTasks.map(st => st.id === subTaskId ? { ...st, done: !st.done } : st) }
-        : task
-    ));
+    )));
   };
 
   const renderTaskCard = (task: Task) => (
-    <div key={task.id} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-      <div className="flex justify-between items-center">
-        <div>
-          <p className="font-semibold bf-text-primary text-sm">{task.title}</p>
-          <p className="text-xs bf-text-muted">Responsable: {task.assignee}</p>
-          <p className="text-xs bf-text-muted">Début: {task.startDate ? new Date(task.startDate).toLocaleDateString('fr-FR') : '-'}</p>
-          <p className="text-xs bf-text-muted">Échéance: {new Date(task.dueDate).toLocaleDateString('fr-FR')}</p>
-          <p className="text-xs bf-text-muted">Priorité: {PRIORITY_LABEL[task.priority]}</p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Button type="button" size="sm" variant="ghost" onClick={() => openEditModal(task)}>Éditer</Button>
-          <Button type="button" size="sm" variant="destructive" onClick={() => openDeleteModal(task.id)}>Supprimer</Button>
-        </div>
-      </div>
-      <div className="flex gap-1 pt-1">
-        <Button type="button" size="sm" variant="ghost" onClick={() => moveTask(task.id, 'todo')}>A faire</Button>
-        <Button type="button" size="sm" variant="ghost" onClick={() => moveTask(task.id, 'in_progress')}>En cours</Button>
-        <Button type="button" size="sm" variant="ghost" onClick={() => moveTask(task.id, 'done')}>Terminé</Button>
-      </div>
-      <div className="pt-2">
-        <div className="flex items-center gap-2">
-          <input
-            className="bf-input flex-1"
-            placeholder="Ajouter une sous-tâche"
-            value={subTaskInput[task.id] || ''}
-            onChange={e => setSubTaskInput(prev => ({ ...prev, [task.id]: e.target.value }))}
-            onKeyDown={e => { if (e.key === 'Enter') addSubTask(task.id); }}
-          />
-          <Button type="button" size="sm" onClick={() => addSubTask(task.id)}>Ajouter</Button>
-        </div>
-        <ul className="pl-4 mt-2 space-y-1">
-          {task.subTasks.map(st => (
-            <li key={st.id} className="flex items-center gap-2">
-              <input type="checkbox" checked={st.done} onChange={() => toggleSubTask(task.id, st.id)} />
-              <span className={st.done ? 'line-through text-gray-400' : ''}>{st.title}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+    <button
+      key={task.id}
+      type="button"
+      onClick={() => openTaskModal(task)}
+      className="w-full text-left rounded-xl border border-slate-200 bg-white px-3 py-3 font-semibold bf-text-primary hover:border-slate-400 transition-colors"
+    >
+      {task.title}
+    </button>
   );
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="bf-text-primary font-black text-2xl mb-1">Tâches & Sous-tâches</h2>
-          <p className="bf-text-muted">Création, édition et visualisation des tâches du chantier.</p>
+          <h2 className="bf-text-primary font-black text-2xl mb-1">Taches & Sous-taches</h2>
+          <p className="bf-text-muted">Cliquez sur une tache pour ouvrir son detail complet.</p>
         </div>
-        <Button type="button" onClick={() => setIsCreateModalOpen(true)}>Créer une tâche</Button>
+        <Button
+          type="button"
+          onClick={() => {
+            resetForm();
+            setIsCreateModalOpen(true);
+          }}
+        >
+          Creer une tache
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <section className="bf-card-soft p-4 space-y-3 bg-red-100 border-red-300">
           <h3 className="bf-text-primary font-black tracking-tight">{STATUS_TITLE.todo}</h3>
-          {grouped.todo.length === 0 ? <p className="text-sm bf-text-muted">Aucune tâche.</p> : grouped.todo.map(renderTaskCard)}
+          {grouped.todo.length === 0 ? <p className="text-sm bf-text-muted">Aucune tache.</p> : grouped.todo.map(renderTaskCard)}
         </section>
         <section className="bf-card-soft p-4 space-y-3 bg-orange-100 border-orange-300">
           <h3 className="bf-text-primary font-black tracking-tight">{STATUS_TITLE.in_progress}</h3>
-          {grouped.in_progress.length === 0 ? <p className="text-sm bf-text-muted">Aucune tâche.</p> : grouped.in_progress.map(renderTaskCard)}
+          {grouped.in_progress.length === 0 ? <p className="text-sm bf-text-muted">Aucune tache.</p> : grouped.in_progress.map(renderTaskCard)}
         </section>
         <section className="bf-card-soft p-4 space-y-3 bg-green-100 border-green-300">
           <h3 className="bf-text-primary font-black tracking-tight">{STATUS_TITLE.done}</h3>
-          {grouped.done.length === 0 ? <p className="text-sm bf-text-muted">Aucune tâche.</p> : grouped.done.map(renderTaskCard)}
+          {grouped.done.length === 0 ? <p className="text-sm bf-text-muted">Aucune tache.</p> : grouped.done.map(renderTaskCard)}
         </section>
       </div>
 
-      {isCreateModalOpen && (
+      {isCreateModalOpen ? (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <div className="bf-modal w-full max-w-lg p-5 space-y-4">
-            <h3 className="bf-text-primary font-black text-xl">Créer une nouvelle tâche</h3>
+            <h3 className="bf-text-primary font-black text-xl">Creer une nouvelle tache</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="md:col-span-2">
                 <label htmlFor="task-title" className="text-sm font-medium bf-text-primary">Titre</label>
-                <input id="task-title" className="bf-input mt-1 w-full" value={title} onChange={(e) => setTitle(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="task-assignee" className="text-sm font-medium bf-text-primary">Responsable</label>
-                <input id="task-assignee" className="bf-input mt-1 w-full" value={assignee} onChange={(e) => setAssignee(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="task-start-date" className="text-sm font-medium bf-text-primary">Date de début</label>
-                <input id="task-start-date" type="date" className="bf-input mt-1 w-full" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="task-date" className="text-sm font-medium bf-text-primary">Échéance</label>
-                <input id="task-date" type="date" className="bf-input mt-1 w-full" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <input id="task-title" className="bf-input mt-1 w-full" value={title} onChange={(event) => setTitle(event.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <label htmlFor="task-priority" className="text-sm font-medium bf-text-primary">Priorité</label>
-                <select id="task-priority" className="bf-input mt-1 w-full" value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}>
+                <label htmlFor="task-description" className="text-sm font-medium bf-text-primary">Description</label>
+                <textarea id="task-description" className="bf-textarea mt-1 w-full rounded-xl px-3 py-2" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="task-assignee" className="text-sm font-medium bf-text-primary">Affectation</label>
+                <input id="task-assignee" className="bf-input mt-1 w-full" value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="task-priority" className="text-sm font-medium bf-text-primary">Priorite</label>
+                <select id="task-priority" className="bf-select mt-1 w-full rounded-xl px-3 py-2" value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
                   <option value="low">Faible</option>
                   <option value="medium">Moyenne</option>
                   <option value="high">Haute</option>
                 </select>
+              </div>
+              <div>
+                <label htmlFor="task-start-date" className="text-sm font-medium bf-text-primary">Date debut</label>
+                <input id="task-start-date" type="date" className="bf-input mt-1 w-full" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="task-date" className="text-sm font-medium bf-text-primary">Echeance</label>
+                <input id="task-date" type="date" className="bf-input mt-1 w-full" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-              <Button type="button" onClick={createTask}>Créer</Button>
+              <Button type="button" onClick={createTask}>Creer</Button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {editTaskId && (
+      {selectedTask ? (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4" role="dialog" aria-modal="true">
-          <div className="bf-modal w-full max-w-lg p-5 space-y-4">
-            <h3 className="bf-text-primary font-black text-xl">Éditer la tâche</h3>
+          <div className="bf-modal w-full max-w-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="bf-text-primary font-black text-xl">Detail tache</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="md:col-span-2">
                 <label htmlFor="edit-task-title" className="text-sm font-medium bf-text-primary">Titre</label>
-                <input id="edit-task-title" className="bf-input mt-1 w-full" value={title} onChange={(e) => setTitle(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="edit-task-assignee" className="text-sm font-medium bf-text-primary">Responsable</label>
-                <input id="edit-task-assignee" className="bf-input mt-1 w-full" value={assignee} onChange={(e) => setAssignee(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="edit-task-start-date" className="text-sm font-medium bf-text-primary">Date de début</label>
-                <input id="edit-task-start-date" type="date" className="bf-input mt-1 w-full" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="edit-task-date" className="text-sm font-medium bf-text-primary">Échéance</label>
-                <input id="edit-task-date" type="date" className="bf-input mt-1 w-full" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <input id="edit-task-title" className="bf-input mt-1 w-full" value={title} onChange={(event) => setTitle(event.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <label htmlFor="edit-task-priority" className="text-sm font-medium bf-text-primary">Priorité</label>
-                <select id="edit-task-priority" className="bf-input mt-1 w-full" value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}>
-                  <option value="low">Faible</option>
-                  <option value="medium">Moyenne</option>
-                  <option value="high">Haute</option>
+                <label htmlFor="edit-task-description" className="text-sm font-medium bf-text-primary">Description</label>
+                <textarea id="edit-task-description" className="bf-textarea mt-1 w-full rounded-xl px-3 py-2" rows={4} value={description} onChange={(event) => setDescription(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="edit-task-assignee" className="text-sm font-medium bf-text-primary">Affectation</label>
+                <input id="edit-task-assignee" className="bf-input mt-1 w-full" value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="edit-task-status" className="text-sm font-medium bf-text-primary">Statut</label>
+                <select id="edit-task-status" className="bf-select mt-1 w-full rounded-xl px-3 py-2" value={status} onChange={(event) => setStatus(event.target.value as TaskStatus)}>
+                  <option value="todo">A faire</option>
+                  <option value="in_progress">En cours</option>
+                  <option value="done">Terminee</option>
                 </select>
               </div>
+              <div>
+                <label htmlFor="edit-task-start-date" className="text-sm font-medium bf-text-primary">Date debut</label>
+                <input id="edit-task-start-date" type="date" className="bf-input mt-1 w-full" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="edit-task-date" className="text-sm font-medium bf-text-primary">Echeance</label>
+                <input id="edit-task-date" type="date" className="bf-input mt-1 w-full" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setEditTaskId(null)}>Annuler</Button>
-              <Button type="button" onClick={saveEditTask}>Enregistrer</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {deleteTaskId && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4" role="dialog" aria-modal="true">
-          <div className="bf-modal w-full max-w-sm p-5 space-y-4">
-            <h3 className="bf-text-primary font-black text-xl">Supprimer la tâche ?</h3>
-            <p>Cette action est irréversible.</p>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setDeleteTaskId(null)}>Annuler</Button>
-              <Button type="button" variant="destructive" onClick={confirmDeleteTask}>Supprimer</Button>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+              <p className="text-sm font-semibold bf-text-primary">Sous-taches</p>
+              <div className="flex items-center gap-2">
+                <input
+                  className="bf-input flex-1"
+                  placeholder="Ajouter une sous-tache"
+                  value={subTaskInput}
+                  onChange={(event) => setSubTaskInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') addSubTask();
+                  }}
+                />
+                <Button type="button" size="sm" onClick={addSubTask}>Ajouter</Button>
+              </div>
+              <ul className="pl-1 mt-2 space-y-1">
+                {selectedTask.subTasks.map((subTask) => (
+                  <li key={subTask.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={subTask.done} onChange={() => toggleSubTask(subTask.id)} />
+                    <span className={subTask.done ? 'line-through text-gray-400' : ''}>{subTask.title}</span>
+                  </li>
+                ))}
+                {selectedTask.subTasks.length === 0 ? <li className="text-xs bf-text-muted">Aucune sous-tache.</li> : null}
+              </ul>
+            </div>
+
+            <div className="flex justify-between gap-2">
+              <Button type="button" variant="destructive" onClick={deleteTask}>Supprimer</Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" onClick={closeTaskModal}>Fermer</Button>
+                <Button type="button" onClick={saveTask}>Enregistrer</Button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -3,6 +3,8 @@ import {
   usePurchaseOrders,
   useCreatePurchaseOrder,
   useUpdatePurchaseOrderStatus,
+  useUpdatePurchaseOrder,
+  useCreateDelivery,
 } from '../hooks/useProcurement';
 import type { PurchaseOrderRow } from '../hooks/useProcurement';
 import { useSuppliers } from '../hooks/useSuppliers';
@@ -31,13 +33,27 @@ interface Props {
 }
 
 export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
+  const fieldClassName = 'bf-input w-full';
+  const selectClassName = 'bf-select w-full rounded-xl px-3 py-2';
+  const areaClassName = 'bf-textarea w-full rounded-xl px-3 py-2';
   const { data: orders = [], isLoading } = usePurchaseOrders(projectId);
   const { data: suppliers = [] } = useSuppliers(projectId);
   const [existingOrderDocs, setExistingOrderDocs] = useState<Record<string, string[]>>({});
   const createOrder = useCreatePurchaseOrder(projectId);
   const updateStatus = useUpdatePurchaseOrderStatus(projectId);
+  const updateOrder = useUpdatePurchaseOrder(projectId);
+  const createDelivery = useCreateDelivery(projectId);
   const [showForm, setShowForm] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [form, setForm] = useState({
+    reference: '',
+    supplier_id: '',
+    total_ht: '',
+    ordered_at: '',
+    expected_delivery_at: '',
+    notes: '',
+  });
+  const [editForm, setEditForm] = useState({
     reference: '',
     supplier_id: '',
     total_ht: '',
@@ -130,6 +146,44 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
     setShowForm(false);
   };
 
+  const startEdit = (order: PurchaseOrderRow) => {
+    setEditingOrderId(order.id);
+    setEditForm({
+      reference: order.reference ?? '',
+      supplier_id: order.supplier_id ?? '',
+      total_ht: order.total_ht != null ? String(order.total_ht) : '',
+      ordered_at: order.ordered_at ? String(order.ordered_at).slice(0, 10) : '',
+      expected_delivery_at: order.expected_delivery_at ? String(order.expected_delivery_at).slice(0, 10) : '',
+      notes: order.notes ?? '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingOrderId || !editForm.reference.trim()) return;
+    await updateOrder.mutateAsync({
+      id: editingOrderId,
+      reference: editForm.reference.trim(),
+      supplier_id: editForm.supplier_id || null,
+      total_ht: editForm.total_ht ? parseFloat(editForm.total_ht) : null,
+      ordered_at: editForm.ordered_at || null,
+      expected_delivery_at: editForm.expected_delivery_at || null,
+      notes: editForm.notes.trim() || null,
+    });
+    setEditingOrderId(null);
+  };
+
+  const createPlannedDeliveryFromOrder = async (order: PurchaseOrderRow) => {
+    if (!order.expected_delivery_at) return;
+    await createDelivery.mutateAsync({
+      order_id: order.id,
+      supplier_id: order.supplier_id,
+      delivered_at: String(order.expected_delivery_at).slice(0, 10),
+      status: 'partial',
+      notes: `Livraison prevue creee automatiquement depuis ${order.reference}`,
+      markOrderDelivered: false,
+    });
+  };
+
   if (isLoading) {
     return <div className="text-sm text-gray-500 py-4">Chargement commandes...</div>;
   }
@@ -149,14 +203,14 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
         <h3 className="font-semibold text-gray-700">{viewLabel} ({filteredOrders.length})</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+          className="text-sm bf-primary-btn px-3 py-1.5 rounded-lg"
         >
           + Nouvelle commande
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-50 p-3 rounded border space-y-2">
+        <form onSubmit={handleSubmit} className="bf-card-soft p-4 rounded-xl border space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Référence *</label>
@@ -164,7 +218,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
                 type="text"
                 value={form.reference}
                 onChange={(e) => setForm({ ...form, reference: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={fieldClassName}
                 placeholder="BC-2026-001"
                 required
               />
@@ -174,7 +228,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
               <select
                 value={form.supplier_id}
                 onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={selectClassName}
               >
                 <option value="">— Sélectionner —</option>
                 {suppliers.map((s) => (
@@ -189,7 +243,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
                 step="0.01"
                 value={form.total_ht}
                 onChange={(e) => setForm({ ...form, total_ht: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={fieldClassName}
                 placeholder="0.00"
               />
             </div>
@@ -199,7 +253,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
                 type="date"
                 value={form.ordered_at}
                 onChange={(e) => setForm({ ...form, ordered_at: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={fieldClassName}
               />
             </div>
             <div>
@@ -208,7 +262,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
                 type="date"
                 value={form.expected_delivery_at}
                 onChange={(e) => setForm({ ...form, expected_delivery_at: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={fieldClassName}
               />
             </div>
           </div>
@@ -217,7 +271,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full border rounded px-2 py-1 text-sm"
+              className={areaClassName}
               rows={2}
             />
           </div>
@@ -226,8 +280,9 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
             <input
               type="file"
               multiple
+              accept=".pdf,application/pdf,image/*"
               onChange={(e) => setAttachments(Array.from(e.target.files ?? []))}
-              className="w-full border rounded px-2 py-1 text-sm"
+              className={fieldClassName}
             />
             {attachments.length > 0 ? (
               <p className="text-xs text-gray-500 mt-1">{attachments.length} document(s) prêt(s) à l'envoi</p>
@@ -237,14 +292,14 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
             <button
               type="submit"
               disabled={createOrder.isPending}
-              className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="text-sm bf-primary-btn px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
               {createOrder.isPending ? 'Création...' : 'Créer'}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="text-sm text-gray-600 px-3 py-1 rounded border hover:bg-gray-100 transition-colors"
+              className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Annuler
             </button>
@@ -265,6 +320,27 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
 
             return (
               <div key={order.id} className="py-3 space-y-1">
+                {editingOrderId === order.id ? (
+                  <div className="bf-card-soft border rounded-xl p-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input className={fieldClassName} value={editForm.reference} onChange={(e) => setEditForm({ ...editForm, reference: e.target.value })} placeholder="Reference" />
+                      <select className={selectClassName} value={editForm.supplier_id} onChange={(e) => setEditForm({ ...editForm, supplier_id: e.target.value })}>
+                        <option value="">— Fournisseur —</option>
+                        {suppliers.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                      <input className={fieldClassName} type="number" step="0.01" value={editForm.total_ht} onChange={(e) => setEditForm({ ...editForm, total_ht: e.target.value })} placeholder="Montant HT" />
+                      <input className={fieldClassName} type="date" value={editForm.ordered_at} onChange={(e) => setEditForm({ ...editForm, ordered_at: e.target.value })} />
+                      <input className={`${fieldClassName} col-span-2`} type="date" value={editForm.expected_delivery_at} onChange={(e) => setEditForm({ ...editForm, expected_delivery_at: e.target.value })} />
+                    </div>
+                    <textarea className={areaClassName} rows={2} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes" />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={saveEdit} className="text-xs bf-primary-btn px-2.5 py-1.5 rounded-lg">Enregistrer</button>
+                      <button type="button" onClick={() => setEditingOrderId(null)} className="text-xs border border-slate-300 px-2.5 py-1.5 rounded-lg">Annuler</button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="font-medium text-sm">{order.reference}</span>
@@ -309,6 +385,21 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
                 ) : null}
                 {transitions.length > 0 && (
                   <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => startEdit(order)}
+                      className="text-xs border border-slate-300 px-2 py-0.5 rounded hover:bg-slate-50 transition-colors"
+                    >
+                      Modifier
+                    </button>
+                    {order.expected_delivery_at ? (
+                      <button
+                        onClick={() => createPlannedDeliveryFromOrder(order)}
+                        disabled={createDelivery.isPending}
+                        className="text-xs border border-indigo-300 px-2 py-0.5 rounded hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                      >
+                        + Livraison prevue
+                      </button>
+                    ) : null}
                     {transitions.map((next: string) => (
                       <button
                         key={next}

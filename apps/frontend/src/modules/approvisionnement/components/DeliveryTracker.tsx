@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDeliveries, useCreateDelivery } from '../hooks/useProcurement';
+import { useUpdateDelivery } from '../hooks/useProcurement';
 import type { DeliveryRow } from '../hooks/useProcurement';
 import { useSuppliers } from '../hooks/useSuppliers';
 import { usePurchaseOrders } from '../hooks/useProcurement';
@@ -18,11 +19,16 @@ interface Props {
 }
 
 export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
+  const fieldClassName = 'bf-input w-full';
+  const selectClassName = 'bf-select w-full rounded-xl px-3 py-2';
+  const areaClassName = 'bf-textarea w-full rounded-xl px-3 py-2';
   const { data: deliveries = [], isLoading } = useDeliveries(projectId);
   const { data: suppliers = [] } = useSuppliers(projectId);
   const { data: orders = [] } = usePurchaseOrders(projectId);
   const createDelivery = useCreateDelivery(projectId);
+  const updateDelivery = useUpdateDelivery(projectId);
   const [showForm, setShowForm] = useState(false);
+  const [editingDeliveryId, setEditingDeliveryId] = useState<string | null>(null);
   const [form, setForm] = useState({
     order_id: '',
     supplier_id: '',
@@ -30,6 +36,11 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
     notes: '',
   });
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [editForm, setEditForm] = useState({
+    delivered_at: '',
+    status: 'received',
+    notes: '',
+  });
   const [existingDeliveryDocs, setExistingDeliveryDocs] = useState<Record<string, string[]>>({});
 
   React.useEffect(() => {
@@ -112,6 +123,26 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
     setShowForm(false);
   };
 
+  const startEdit = (delivery: DeliveryRow) => {
+    setEditingDeliveryId(delivery.id);
+    setEditForm({
+      delivered_at: String(delivery.delivered_at).slice(0, 10),
+      status: delivery.status ?? 'received',
+      notes: delivery.notes ?? '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingDeliveryId || !editForm.delivered_at) return;
+    await updateDelivery.mutateAsync({
+      id: editingDeliveryId,
+      delivered_at: editForm.delivered_at,
+      status: editForm.status,
+      notes: editForm.notes.trim() || null,
+    });
+    setEditingDeliveryId(null);
+  };
+
   if (isLoading) {
     return <div className="text-sm text-gray-500 py-4">Chargement livraisons...</div>;
   }
@@ -135,14 +166,14 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
         </h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+          className="text-sm bf-primary-btn px-3 py-1.5 rounded-lg"
         >
           + Enregistrer livraison
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-50 p-3 rounded border space-y-2">
+        <form onSubmit={handleSubmit} className="bf-card-soft p-4 rounded-xl border space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
@@ -150,7 +181,7 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
                 type="date"
                 value={form.delivered_at}
                 onChange={(e) => setForm({ ...form, delivered_at: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={fieldClassName}
                 required
               />
             </div>
@@ -159,7 +190,7 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
               <select
                 value={form.supplier_id}
                 onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                className={selectClassName}
               >
                 <option value="">— Sélectionner —</option>
                 {suppliers.map((s) => (
@@ -171,8 +202,17 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
               <label className="block text-xs font-medium text-gray-600 mb-1">Commande associée</label>
               <select
                 value={form.order_id}
-                onChange={(e) => setForm({ ...form, order_id: e.target.value })}
-                className="w-full border rounded px-2 py-1 text-sm"
+                onChange={(e) => {
+                  const selectedOrderId = e.target.value;
+                  const selectedOrder = orders.find((order) => order.id === selectedOrderId);
+                  setForm({
+                    ...form,
+                    order_id: selectedOrderId,
+                    supplier_id: selectedOrder?.supplier_id ?? form.supplier_id,
+                    delivered_at: selectedOrder?.expected_delivery_at ? String(selectedOrder.expected_delivery_at).slice(0, 10) : form.delivered_at,
+                  });
+                }}
+                className={selectClassName}
               >
                 <option value="">— Aucune —</option>
                 {orders.map((o) => (
@@ -186,7 +226,7 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full border rounded px-2 py-1 text-sm"
+              className={areaClassName}
               rows={2}
             />
           </div>
@@ -195,8 +235,9 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
             <input
               type="file"
               multiple
+              accept=".pdf,application/pdf,image/*"
               onChange={(e) => setAttachments(Array.from(e.target.files ?? []))}
-              className="w-full border rounded px-2 py-1 text-sm"
+              className={fieldClassName}
             />
             {attachments.length > 0 ? (
               <p className="text-xs text-gray-500 mt-1">{attachments.length} document(s) prêt(s) à l'envoi</p>
@@ -206,14 +247,14 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
             <button
               type="submit"
               disabled={createDelivery.isPending}
-              className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="text-sm bf-primary-btn px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
               {createDelivery.isPending ? 'Enregistrement...' : 'Enregistrer'}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="text-sm text-gray-600 px-3 py-1 rounded border hover:bg-gray-100 transition-colors"
+              className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Annuler
             </button>
@@ -254,6 +295,23 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
 
             return (
               <div key={d.id} className="py-2 space-y-0.5">
+                {editingDeliveryId === d.id ? (
+                  <div className="bf-card-soft border rounded-xl p-3 space-y-2 mb-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input type="date" className={fieldClassName} value={editForm.delivered_at} onChange={(e) => setEditForm({ ...editForm, delivered_at: e.target.value })} />
+                      <select className={selectClassName} value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+                        <option value="received">Recu</option>
+                        <option value="partial">Partiel</option>
+                        <option value="refused">Refuse</option>
+                      </select>
+                      <input className={fieldClassName} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={saveEdit} className="text-xs bf-primary-btn px-2.5 py-1.5 rounded-lg">Enregistrer</button>
+                      <button type="button" onClick={() => setEditingDeliveryId(null)} className="text-xs border border-slate-300 px-2.5 py-1.5 rounded-lg">Annuler</button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
                     {new Date(d.delivered_at).toLocaleDateString('fr-FR')}
@@ -266,6 +324,11 @@ export function DeliveryTracker({ projectId, view = 'pending' }: Props) {
                 {orderRef && <p className="text-xs text-gray-400">Commande : {orderRef}</p>}
                 {isLate ? <p className="text-xs text-red-600">Livraison enregistrée en retard</p> : null}
                 {d.notes && <p className="text-xs text-gray-400 italic">{d.notes}</p>}
+                <div className="pt-1">
+                  <button onClick={() => startEdit(d)} className="text-xs border border-slate-300 px-2 py-0.5 rounded hover:bg-slate-50 transition-colors">
+                    Modifier
+                  </button>
+                </div>
                 {attachmentUrls.length > 0 ? (
                   <div className="text-xs text-gray-500">
                     Documents ({attachmentUrls.length}) :

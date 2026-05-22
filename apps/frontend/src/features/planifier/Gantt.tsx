@@ -31,6 +31,12 @@ export interface ResourceConflict {
   overlapEnd: string
 }
 
+interface PlannedDelivery {
+  id: string
+  name: string
+  date: string
+}
+
 const initialTasks: TaskNode[] = [
   {
     id: 1,
@@ -75,9 +81,13 @@ function dayDiff(from: Date, to: Date): number {
 export function Gantt({
   mode = "normal",
   onConflictsChange,
+  readOnly = false,
+  plannedDeliveries = [],
 }: {
   mode?: GanttMode
   onConflictsChange?: (conflicts: ResourceConflict[]) => void
+  readOnly?: boolean
+  plannedDeliveries?: PlannedDelivery[]
 }) {
   const [tasks, setTasks] = useState<TaskNode[]>(initialTasks)
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
@@ -86,7 +96,22 @@ export function Gantt({
     defaultValues: { name: "", start: "", end: "", assigneesInput: "" }
   })
 
-  const flatTasks = useMemo(() => flattenTree(tasks), [tasks])
+  const flatTasks = useMemo(() => {
+    const base = flattenTree(tasks)
+    if (plannedDeliveries.length === 0) return base
+
+    const deliveriesAsTasks: Array<TaskNode & { depth: number }> = plannedDeliveries.map((delivery, index) => ({
+      id: -(index + 1),
+      name: delivery.name,
+      start: delivery.date,
+      end: delivery.date,
+      assignees: ["Livraison"],
+      children: [],
+      depth: 0,
+    }))
+
+    return [...base, ...deliveriesAsTasks]
+  }, [tasks, plannedDeliveries])
 
   const chartData = useMemo(() => {
     const today = new Date()
@@ -212,63 +237,67 @@ export function Gantt({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm bf-text-muted">Cliquez sur une tâche pour préparer une sous-tâche.</p>
-        <Button type="button" onClick={startRootTaskCreation}>Ajouter une tâche</Button>
-      </div>
+      {!readOnly ? (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm bf-text-muted">Cliquez sur une tâche pour préparer une sous-tâche.</p>
+            <Button type="button" onClick={startRootTaskCreation}>Ajouter une tâche</Button>
+          </div>
 
-      {selectedTask ? (
-        <div className="bf-card-soft p-3 text-xs">
-          <span className="font-semibold">Tâche sélectionnée :</span> {selectedTask.name}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="ml-3"
-            onClick={() => startSubTaskCreation(selectedTask.id)}
-          >
-            Ajouter une sous-tâche
-          </Button>
-        </div>
+          {selectedTask ? (
+            <div className="bf-card-soft p-3 text-xs">
+              <span className="font-semibold">Tâche sélectionnée :</span> {selectedTask.name}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="ml-3"
+                onClick={() => startSubTaskCreation(selectedTask.id)}
+              >
+                Ajouter une sous-tâche
+              </Button>
+            </div>
+          ) : null}
+
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap gap-2 items-end" aria-label="Ajouter une tâche ou sous-tâche">
+            <div className="w-full text-xs bf-text-muted">
+              {parentForNewTask === null ? "Création : tâche racine" : `Création : sous-tâche de l'élément ${parentForNewTask}`}
+            </div>
+            <div>
+              <label htmlFor="name" className="bf-text-primary block text-sm font-medium">Nom</label>
+              <input id="name" type="text" {...form.register("name")} className="bf-input mt-1 block w-full rounded-xl" required />
+              {form.formState.errors.name && <p className="text-red-600 text-xs mt-1">{form.formState.errors.name.message}</p>}
+            </div>
+            <div>
+              <label htmlFor="start" className="bf-text-primary block text-sm font-medium">Début</label>
+              <input id="start" type="date" {...form.register("start")} className="bf-input mt-1 block w-full rounded-xl" required />
+              {form.formState.errors.start && <p className="text-red-600 text-xs mt-1">{form.formState.errors.start.message}</p>}
+            </div>
+            <div>
+              <label htmlFor="end" className="bf-text-primary block text-sm font-medium">Fin</label>
+              <input id="end" type="date" {...form.register("end")} className="bf-input mt-1 block w-full rounded-xl" required />
+              {form.formState.errors.end && <p className="text-red-600 text-xs mt-1">{form.formState.errors.end.message}</p>}
+            </div>
+            <div>
+              <label htmlFor="assigneesInput" className="bf-text-primary block text-sm font-medium">Personnes assignées</label>
+              <input
+                id="assigneesInput"
+                type="text"
+                {...form.register("assigneesInput")}
+                className="bf-input mt-1 block w-full rounded-xl"
+                placeholder="Ex: Ahmed, Lina, Marc"
+                required
+              />
+              {form.formState.errors.assigneesInput && <p className="text-red-600 text-xs mt-1">{form.formState.errors.assigneesInput.message}</p>}
+            </div>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? <Spinner size={16} /> : parentForNewTask === null ? "Ajouter la tâche" : "Ajouter la sous-tâche"}
+            </Button>
+          </form>
+        </>
       ) : null}
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap gap-2 items-end" aria-label="Ajouter une tâche ou sous-tâche">
-        <div className="w-full text-xs bf-text-muted">
-          {parentForNewTask === null ? "Création : tâche racine" : `Création : sous-tâche de l'élément ${parentForNewTask}`}
-        </div>
-        <div>
-          <label htmlFor="name" className="bf-text-primary block text-sm font-medium">Nom</label>
-          <input id="name" type="text" {...form.register("name")} className="bf-input mt-1 block w-full rounded-xl" required />
-          {form.formState.errors.name && <p className="text-red-600 text-xs mt-1">{form.formState.errors.name.message}</p>}
-        </div>
-        <div>
-          <label htmlFor="start" className="bf-text-primary block text-sm font-medium">Début</label>
-          <input id="start" type="date" {...form.register("start")} className="bf-input mt-1 block w-full rounded-xl" required />
-          {form.formState.errors.start && <p className="text-red-600 text-xs mt-1">{form.formState.errors.start.message}</p>}
-        </div>
-        <div>
-          <label htmlFor="end" className="bf-text-primary block text-sm font-medium">Fin</label>
-          <input id="end" type="date" {...form.register("end")} className="bf-input mt-1 block w-full rounded-xl" required />
-          {form.formState.errors.end && <p className="text-red-600 text-xs mt-1">{form.formState.errors.end.message}</p>}
-        </div>
-        <div>
-          <label htmlFor="assigneesInput" className="bf-text-primary block text-sm font-medium">Personnes assignées</label>
-          <input
-            id="assigneesInput"
-            type="text"
-            {...form.register("assigneesInput")}
-            className="bf-input mt-1 block w-full rounded-xl"
-            placeholder="Ex: Ahmed, Lina, Marc"
-            required
-          />
-          {form.formState.errors.assigneesInput && <p className="text-red-600 text-xs mt-1">{form.formState.errors.assigneesInput.message}</p>}
-        </div>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? <Spinner size={16} /> : parentForNewTask === null ? "Ajouter la tâche" : "Ajouter la sous-tâche"}
-        </Button>
-      </form>
-
-      {mode === "normal" ? (
+      {mode === "normal" && !readOnly ? (
       <div className="grid gap-3 md:grid-cols-3">
         <div className="bf-card-soft p-3">
           <p className="text-xs uppercase font-semibold bf-text-muted mb-2">Avancement global</p>
@@ -307,7 +336,7 @@ export function Gantt({
       </div>
       ) : null}
 
-      {mode === "normal" ? (
+      {mode === "normal" && !readOnly ? (
       <div className="overflow-x-auto">
         <table className="bf-table min-w-full text-xs bf-text-primary">
           <thead>

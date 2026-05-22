@@ -28,7 +28,7 @@ function KpiCard({
     blue: 'border-cyan-200',
   }[accent];
   return (
-    <div className={`bf-card-soft p-5 rounded-xl border ${border} space-y-3`}>
+    <div className={`bf-card-soft p-5 rounded-xl border ${border} min-h-[220px] flex flex-col justify-between space-y-3`}>
       <p className="text-xs bf-text-muted uppercase tracking-wide font-semibold">{label}</p>
       {children}
     </div>
@@ -40,6 +40,25 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   return (
     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
       <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function MiniChart({ values, colors }: { values: number[]; colors: string[] }) {
+  const max = Math.max(...values, 1);
+  return (
+    <div className="flex items-end gap-1.5 h-12 pt-2">
+      {values.map((value, index) => {
+        const height = `${Math.max(10, Math.round((value / max) * 100))}%`;
+        return (
+          <div
+            key={`chart-${index}`}
+            className={`w-4 rounded-t ${colors[index % colors.length]}`}
+            style={{ height }}
+            aria-hidden="true"
+          />
+        );
+      })}
     </div>
   );
 }
@@ -111,6 +130,10 @@ export function GlobalDashboard() {
             </div>
           </div>
           <Bar value={data.totalBudgetSpent} max={data.totalBudgetSold} color={budgetPct >= 100 ? 'bg-red-500' : budgetPct >= 80 ? 'bg-amber-400' : 'bg-emerald-500'} />
+          <MiniChart
+            values={[data.totalBudgetSold, data.totalBudgetSpent, Math.max(data.totalBudgetSold - data.totalBudgetSpent, 0)]}
+            colors={['bg-sky-400', 'bg-emerald-500', 'bg-indigo-400']}
+          />
         </KpiCard>
 
         {/* 2. Deadlines projets */}
@@ -136,6 +159,10 @@ export function GlobalDashboard() {
               </div>
             ))}
           </div>
+          <MiniChart
+            values={data.projects.slice(0, 5).map((project) => project.completionPct)}
+            colors={['bg-emerald-500', 'bg-amber-400', 'bg-cyan-500', 'bg-indigo-500']}
+          />
         </KpiCard>
 
         {/* 3. Charge par membre */}
@@ -166,6 +193,10 @@ export function GlobalDashboard() {
             Total : <span className="font-semibold">{totalActualHours}h</span> réalisées
             {totalEstimatedHours > 0 && <> / <span className="font-semibold">{totalEstimatedHours}h</span> estimées</>}
           </p>
+          <MiniChart
+            values={data.workloadByMember.slice(0, 5).map((member) => member.actualHours)}
+            colors={['bg-cyan-500', 'bg-sky-400', 'bg-violet-500', 'bg-amber-400']}
+          />
         </KpiCard>
 
         {/* 4. Incidents à traiter */}
@@ -185,6 +216,10 @@ export function GlobalDashboard() {
               <p className="text-sm text-emerald-600 font-semibold">✓ Tout traité</p>
             )}
           </div>
+          <MiniChart
+            values={[data.openIncidents, data.criticalIncidents, Math.max(data.openIncidents - data.criticalIncidents, 0)]}
+            colors={['bg-amber-400', 'bg-red-500', 'bg-emerald-500']}
+          />
         </KpiCard>
 
         {/* 5. Commandes en retard à réceptionner */}
@@ -198,6 +233,10 @@ export function GlobalDashboard() {
               <p className="text-sm text-emerald-600 font-semibold">✓ Aucun retard</p>
             )}
           </div>
+          <MiniChart
+            values={[data.lateOrdersToPend, Math.max(data.projects.length - data.lateOrdersToPend, 0), data.projects.length]}
+            colors={['bg-red-500', 'bg-emerald-500', 'bg-slate-400']}
+          />
         </KpiCard>
 
         {/* 6. Commandes livrées en retard */}
@@ -211,6 +250,10 @@ export function GlobalDashboard() {
               <p className="text-sm text-emerald-600 font-semibold">✓ Aucun retard</p>
             )}
           </div>
+          <MiniChart
+            values={[data.lateDeliveries, Math.max(data.projects.length - data.lateDeliveries, 0), data.projects.length]}
+            colors={['bg-amber-400', 'bg-emerald-500', 'bg-cyan-500']}
+          />
         </KpiCard>
 
       </div>

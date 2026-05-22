@@ -102,12 +102,16 @@ export function useCreateDelivery(projectId: string) {
       order_id,
       supplier_id,
       delivered_at,
+      status,
       notes,
+      markOrderDelivered,
     }: {
       order_id?: string | null;
       supplier_id?: string | null;
       delivered_at: string;
+      status?: string | null;
       notes?: string | null;
+      markOrderDelivered?: boolean;
     }) => {
       const { data, error } = await supabase
         .from('deliveries')
@@ -116,7 +120,7 @@ export function useCreateDelivery(projectId: string) {
           order_id: order_id ?? null,
           supplier_id: supplier_id ?? null,
           delivered_at,
-          status: 'received',
+          status: status ?? 'received',
           notes: notes ?? null,
         })
         .select()
@@ -124,13 +128,89 @@ export function useCreateDelivery(projectId: string) {
       if (error) throw error;
 
       // Une livraison reliée à une commande fait évoluer la commande vers "delivered".
-      if (order_id) {
+      if (order_id && markOrderDelivered !== false) {
         await supabase
           .from('purchase_orders')
           .update({ status: 'delivered' })
           .eq('id', order_id);
       }
 
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
+    },
+  });
+}
+
+export function useUpdatePurchaseOrder(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      reference,
+      supplier_id,
+      total_ht,
+      ordered_at,
+      expected_delivery_at,
+      notes,
+    }: {
+      id: string;
+      reference?: string;
+      supplier_id?: string | null;
+      total_ht?: number | null;
+      ordered_at?: string | null;
+      expected_delivery_at?: string | null;
+      notes?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .update({
+          ...(reference !== undefined ? { reference } : {}),
+          ...(supplier_id !== undefined ? { supplier_id } : {}),
+          ...(total_ht !== undefined ? { total_ht } : {}),
+          ...(ordered_at !== undefined ? { ordered_at } : {}),
+          ...(expected_delivery_at !== undefined ? { expected_delivery_at } : {}),
+          ...(notes !== undefined ? { notes } : {}),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
+    },
+  });
+}
+
+export function useUpdateDelivery(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      delivered_at,
+      status,
+      notes,
+    }: {
+      id: string;
+      delivered_at?: string;
+      status?: string;
+      notes?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from('deliveries')
+        .update({
+          ...(delivered_at !== undefined ? { delivered_at } : {}),
+          ...(status !== undefined ? { status } : {}),
+          ...(notes !== undefined ? { notes } : {}),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {

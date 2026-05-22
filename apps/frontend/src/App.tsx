@@ -208,7 +208,6 @@ function App() {
         <div className="w-full min-h-screen px-4 md:px-6 xl:px-8 pt-4 md:pt-0 pb-32 md:pb-0">
           <div className="flex flex-col gap-6 md:gap-0 md:flex-row md:items-stretch md:h-screen">
           <Sidebar
-            projectName={selectedProject?.name ?? (isProjectsLoading ? 'Chargement du projet...' : 'Aucun projet disponible')}
             projects={projectOptions}
             selectedProjectId={resolvedProjectId}
             onProjectChange={setCurrentProjectId}
@@ -268,7 +267,7 @@ function App() {
                 <Route path="/documents" element={<Navigate to="/executer" replace />} />
 
                 <Route path="/planifier" element={(
-                <ProtectedRoute permission="module:planifier">
+                  <ProtectedRoute permission="module:planifier">
                 <motion.section
                   key="planifier"
                   initial={{ opacity: 0, y: 20 }}
@@ -278,7 +277,7 @@ function App() {
                   className="surface-panel p-5 md:p-6"
                 >
                   <Suspense fallback={<SectionLoader label="Chargement du planning..." />}>
-                    <Planifier />
+                          <Planifier projectId={resolvedProjectId} />
                   </Suspense>
                 </motion.section>
                 </ProtectedRoute>
