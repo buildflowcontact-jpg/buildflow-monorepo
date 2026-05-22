@@ -10,10 +10,10 @@
 
 :root {
   --bf-text-primary: #0a1020;
-  --bf-text-muted: #1f2937;
-  --bf-surface-bg: #f3f7f4;
+  --bf-text-muted: #111827;
+  --bf-surface-bg: #f5f8f5;
   --bf-surface-border: rgba(15, 23, 42, 0.44);
-  --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.28);
+  --bf-surface-shadow: 0 24px 38px -28px rgba(15, 23, 42, 0.4);
   --bf-header-bg: rgba(255, 255, 255, 0.9);
   --bf-header-border: rgba(15, 23, 42, 0.14);
   --bf-nav-bg: linear-gradient(145deg, #0f172a, #1d4ed8);
@@ -28,7 +28,7 @@
   --bf-badge-text: #0f172a;
   --bf-status-bg: rgba(16, 185, 129, 0.2);
   --bf-status-text: #047857;
-  --bf-theme-bg: #d8e0db;
+  --bf-theme-bg: #aeb8b0;
   --bf-shell-bg: none;
   --bf-radius: 1rem;
   --bf-border-width: 1px;
@@ -43,9 +43,9 @@
 body.ui-theme-industrial {
   --bf-text-primary: #0b1324;
   --bf-text-muted: #0f172a;
-  --bf-surface-bg: #eef3ef;
+  --bf-surface-bg: #f1f5f1;
   --bf-surface-border: rgba(15, 23, 42, 0.5);
-  --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.24);
+  --bf-surface-shadow: 0 24px 38px -28px rgba(15, 23, 42, 0.36);
   --bf-header-bg: #ffffff;
   --bf-header-border: rgba(15, 23, 42, 0.7);
   --bf-nav-bg: #0f172a;
@@ -60,7 +60,7 @@ body.ui-theme-industrial {
   --bf-badge-text: #0f172a;
   --bf-status-bg: #ffedd5;
   --bf-status-text: #c2410c;
-  --bf-theme-bg: #d2dbd5;
+  --bf-theme-bg: #a6b3a8;
   --bf-shell-bg: none;
   --bf-radius: 0.35rem;
   --bf-border-width: 2px;
@@ -73,9 +73,9 @@ body.ui-theme-industrial {
 body.ui-theme-cockpit {
   --bf-text-primary: #0f172a;
   --bf-text-muted: #1e293b;
-  --bf-surface-bg: #f4f8f5;
+  --bf-surface-bg: #f3f7f3;
   --bf-surface-border: rgba(51, 65, 85, 0.52);
-  --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.24);
+  --bf-surface-shadow: 0 24px 38px -28px rgba(15, 23, 42, 0.38);
   --bf-header-bg: rgba(255, 255, 255, 0.78);
   --bf-header-border: rgba(148, 163, 184, 0.48);
   --bf-nav-bg: #0f172a;
@@ -90,7 +90,7 @@ body.ui-theme-cockpit {
   --bf-badge-text: #334155;
   --bf-status-bg: rgba(16, 185, 129, 0.2);
   --bf-status-text: #047857;
-  --bf-theme-bg: #d6dfd9;
+  --bf-theme-bg: #a9b6ac;
   --bf-shell-bg: none;
   --bf-radius: 1rem;
   --bf-border-width: 1px;
@@ -103,9 +103,9 @@ body.ui-theme-cockpit {
 body.ui-theme-streamline {
   --bf-text-primary: #0f172a;
   --bf-text-muted: #1e293b;
-  --bf-surface-bg: #f6faf7;
+  --bf-surface-bg: #f4f8f4;
   --bf-surface-border: rgba(51, 65, 85, 0.54);
-  --bf-surface-shadow: 0 20px 32px -26px rgba(15, 23, 42, 0.24);
+  --bf-surface-shadow: 0 24px 38px -28px rgba(15, 23, 42, 0.38);
   --bf-header-bg: rgba(248, 250, 252, 0.95);
   --bf-header-border: rgba(148, 163, 184, 0.35);
   --bf-nav-bg: #2563eb;
@@ -120,7 +120,7 @@ body.ui-theme-streamline {
   --bf-badge-text: #1d4ed8;
   --bf-status-bg: rgba(5, 150, 105, 0.18);
   --bf-status-text: #047857;
-  --bf-theme-bg: #d1dbd6;
+  --bf-theme-bg: #a4b1a7;
   --bf-shell-bg: none;
   --bf-radius: 1.35rem;
   --bf-border-width: 1px;
@@ -134,7 +134,9 @@ body {
   margin: 0;
   font-family: 'Manrope', sans-serif;
   color: var(--bf-text-primary);
-  background: var(--bf-theme-bg);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.35), transparent 42%),
+    linear-gradient(160deg, color-mix(in srgb, var(--bf-theme-bg) 88%, #aebcae) 0%, var(--bf-theme-bg) 100%);
 }
 
 h1, h2, h3, h4 {
@@ -170,6 +172,15 @@ h1 {
   position: relative;
   overflow: hidden;
   animation: bfSectionRise 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.surface-panel,
+.bf-card-soft,
+.bf-modal,
+.bf-auth-card,
+.bf-search-shell,
+.bf-preview-card {
+  background: var(--bf-surface-bg) !important;
 }
 
 .surface-panel::after {
