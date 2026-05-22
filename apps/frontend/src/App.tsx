@@ -7,11 +7,9 @@ import { useToast } from "./ui/ToastProvider";
 import { useAuth, signOut } from "./modules/chantier/hooks/useAuth";
 import { useRealtimeProjectEvents } from "./utils/useRealtimeProjectEvents";
 import { initSyncBridge } from "@/services/sync/syncBridge";
-import { Header } from "./components/layout/Header";
 import { Sidebar } from "./components/layout/Sidebar";
 import { MobileNav } from "./components/layout/MobileNav";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
-import { ProjectBanner } from "./components/layout/ProjectBanner";
 import { useProjects } from "./hooks/useProjects";
 import { useSyncUITheme } from "./hooks/useSyncUITheme";
 import { useProjectStore } from "./store/projectStore";
@@ -207,26 +205,17 @@ function App() {
           <ConflictModal />
         </Suspense>
 
-        <Header
-          userRole={userRole}
-          email={user.email ?? ''}
-          onSignOut={signOut}
-          statusLabel={t('statusInProgress')}
-          projectId={resolvedProjectId}
-        />
-
-        <div className="w-full px-4 md:px-8 xl:px-10 pt-4 md:pt-6 pb-32 md:pb-8">
-          <ProjectBanner
-            label="Projet"
+        <div className="w-full px-4 md:px-6 xl:px-8 pt-4 md:pt-6 pb-32 md:pb-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start">
+          <Sidebar
             projectName={selectedProject?.name ?? (isProjectsLoading ? 'Chargement du projet...' : 'Aucun projet disponible')}
             projects={projectOptions}
             selectedProjectId={resolvedProjectId}
             onProjectChange={setCurrentProjectId}
+            onSignOut={signOut}
           />
 
-          <Sidebar />
-
-          <main className="space-y-6">
+          <main className="min-w-0 flex-1 space-y-6">
             {isProjectsLoading ? (
               <SectionLoader label="Chargement des projets..." />
             ) : null}
@@ -536,6 +525,7 @@ function App() {
             </AnimatePresence>
             ) : null}
           </main>
+          </div>
         </div>
 
         <MobileNav />
