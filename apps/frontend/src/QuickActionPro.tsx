@@ -340,18 +340,20 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
   };
 
   if (!isOpen) return (
-    <button onClick={() => { setIsOpen(true); triggerHaptic(); }} className="bf-quickaction-fab fixed bottom-6 right-6 w-16 h-16 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50" aria-label="Ouvrir actions rapides terrain">
+    <button onClick={() => { setIsOpen(true); triggerHaptic(); }} className="bf-quickaction-fab fixed bottom-5 right-5 sm:bottom-6 sm:right-6 w-14 h-14 sm:w-16 sm:h-16 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50" aria-label="Ouvrir actions rapides terrain">
       <Plus size={32} />
     </button>
   );
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center">
-      <div className="bf-modal w-full max-w-lg p-6 space-y-6 shadow-2xl animate-in fade-in slide-in-from-bottom-10">
-        <div className="flex justify-between items-center">
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4">
+      <div className="bf-modal w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] shadow-2xl animate-in fade-in slide-in-from-bottom-10 overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-200/70">
           <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Signalement Rapide</h3>
           <button onClick={() => !loading && setIsOpen(false)} className="bg-slate-100 p-2 rounded-full text-slate-500 disabled:opacity-40" disabled={loading} aria-label="Fermer les actions rapides"><X size={20}/></button>
         </div>
+
+        <div className="overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
 
         <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-800">
           {loading ? 'Transmission en cours... merci de patienter.' : `Action en cours: ${ACTION_CONFIG[form.type].label}.`}
@@ -467,15 +469,15 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {ACTION_TYPES.map((actionType) => (
             <button key={actionType} onClick={() => setForm({ ...form, type: actionType })}
-              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${form.type === actionType ? 'bf-action-tile-active' : 'border-slate-100 text-slate-400'}`}>
+              className={`min-h-20 sm:min-h-24 p-3 sm:p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${form.type === actionType ? 'bf-action-tile-active' : 'border-slate-100 text-slate-400'}`}>
               {actionType === 'INCIDENT' && <AlertTriangle size={24}/>}
               {actionType === 'PHOTO' && <Camera size={24}/>}
               {actionType === 'TASK_DONE' && <CheckCircle2 size={24}/>}
               {actionType === 'DELIVERY' && <Package size={24}/>}
-              <span className="text-[10px] font-bold uppercase">{ACTION_CONFIG[actionType].label}</span>
+              <span className="text-[11px] font-bold uppercase leading-tight text-center">{ACTION_CONFIG[actionType].label}</span>
             </button>
           ))}
         </div>
@@ -535,7 +537,7 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
 
         <textarea 
           placeholder={form.type === 'INCIDENT' ? 'Quel est le probleme ?' : 'Commentaire operationnel...'}
-          className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-lg"
+          className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-base"
           rows={3}
           value={form.description}
           onChange={(e) => {
@@ -550,7 +552,9 @@ const QuickActionPro = ({ projectId, activeDocumentId }: QuickActionProProps) =>
           <span className="text-slate-500">{descriptionLength} caractere(s)</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        </div>
+
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 bg-white/95 backdrop-blur sticky bottom-0">
           <button
             type="button"
             onClick={() => !loading && setIsOpen(false)}
