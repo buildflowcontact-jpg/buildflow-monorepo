@@ -28,7 +28,7 @@
   --bf-badge-text: #0f172a;
   --bf-status-bg: rgba(16, 185, 129, 0.2);
   --bf-status-text: #047857;
-  --bf-theme-bg: #e7ebf2;
+  --bf-theme-bg: #cfd8e6;
   --bf-shell-bg: none;
   --bf-radius: 1rem;
   --bf-border-width: 1px;
@@ -60,7 +60,7 @@ body.ui-theme-industrial {
   --bf-badge-text: #0f172a;
   --bf-status-bg: #ffedd5;
   --bf-status-text: #c2410c;
-  --bf-theme-bg: #e7ebf2;
+  --bf-theme-bg: #cad4e3;
   --bf-shell-bg: none;
   --bf-radius: 0.35rem;
   --bf-border-width: 2px;
@@ -90,7 +90,7 @@ body.ui-theme-cockpit {
   --bf-badge-text: #334155;
   --bf-status-bg: rgba(16, 185, 129, 0.2);
   --bf-status-text: #047857;
-  --bf-theme-bg: #e7ebf2;
+  --bf-theme-bg: #cfd8e6;
   --bf-shell-bg: none;
   --bf-radius: 1rem;
   --bf-border-width: 1px;
@@ -120,7 +120,7 @@ body.ui-theme-streamline {
   --bf-badge-text: #1d4ed8;
   --bf-status-bg: rgba(5, 150, 105, 0.18);
   --bf-status-text: #047857;
-  --bf-theme-bg: #e7ebf2;
+  --bf-theme-bg: #c7d1e2;
   --bf-shell-bg: none;
   --bf-radius: 1.35rem;
   --bf-border-width: 1px;
