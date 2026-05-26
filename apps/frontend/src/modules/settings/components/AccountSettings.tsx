@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { signOut, useAuth } from '@/modules/chantier/hooks/useAuth';
 import { UITheme, uiThemeLabels, useUIStore } from '../../../store/uiStore';
 
 const THEMES: Array<{ id: UITheme; description: string }> = [
@@ -16,12 +18,96 @@ const THEMES: Array<{ id: UITheme; description: string }> = [
   },
 ];
 
+const EXTRA_SETTINGS = [
+  'Notifications e-mail et push par module',
+  'Photo de profil et avatar equipe',
+  'Langue, fuseau horaire et format de date',
+  'Historique des sessions actives et appareils connectes',
+  'Double authentification et securite du compte',
+  'Signature automatique pour rapports et validations',
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: 'fr', label: 'Francais' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Espanol' },
+];
+
+const DATE_FORMAT_OPTIONS = [
+  { value: 'dd/mm/yyyy', label: 'JJ/MM/AAAA' },
+  { value: 'yyyy-mm-dd', label: 'AAAA-MM-JJ' },
+  { value: 'mm/dd/yyyy', label: 'MM/JJ/AAAA' },
+];
+
+function getInitials(firstName: string, lastName: string, fallback: string) {
+  const composed = `${firstName} ${lastName}`.trim();
+  const source = composed || fallback;
+  return source
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
 export function AccountSettings() {
+  const { user } = useAuth();
   const uiTheme = useUIStore((state) => state.uiTheme);
   const setUITheme = useUIStore((state) => state.setUITheme);
   const isThemeSyncing = useUIStore((state) => state.isThemeSyncing);
   const themeSyncError = useUIStore((state) => state.themeSyncError);
   const retryThemeSync = useUIStore((state) => state.retryThemeSync);
+  const userMetadata = useMemo(() => (user?.user_metadata ?? {}) as Record<string, unknown>, [user?.user_metadata]);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [profileTitle, setProfileTitle] = useState('');
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [signature, setSignature] = useState('');
+  const [language, setLanguage] = useState('fr');
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris');
+  const [dateFormat, setDateFormat] = useState('dd/mm/yyyy');
+  const [notifyIncidentEmail, setNotifyIncidentEmail] = useState(true);
+  const [notifyIncidentPush, setNotifyIncidentPush] = useState(true);
+  const [notifyPlanningEmail, setNotifyPlanningEmail] = useState(false);
+  const [notifyPlanningPush, setNotifyPlanningPush] = useState(true);
+  const [notifyApproEmail, setNotifyApproEmail] = useState(true);
+  const [notifyApproPush, setNotifyApproPush] = useState(false);
+  const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const currentSessionLabel = useMemo(() => {
+    const parts = [navigator.platform, navigator.language].filter(Boolean);
+    return parts.join(' · ');
+  }, []);
+  const currentInitials = useMemo(
+    () => getInitials(firstName, lastName, user?.email?.slice(0, 2) ?? 'BU'),
+    [firstName, lastName, user?.email]
+  );
+
+  useEffect(() => {
+    setFirstName(typeof userMetadata.first_name === 'string' ? userMetadata.first_name : '');
+    setLastName(typeof userMetadata.last_name === 'string' ? userMetadata.last_name : '');
+    setProfileTitle(typeof userMetadata.profile_title === 'string' ? userMetadata.profile_title : '');
+    setAvatarUrl(typeof userMetadata.avatar_url === 'string' ? userMetadata.avatar_url : '');
+    setSignature(typeof userMetadata.signature === 'string' ? userMetadata.signature : '');
+    setLanguage(typeof userMetadata.language === 'string' ? userMetadata.language : 'fr');
+    setTimezone(typeof userMetadata.timezone === 'string' ? userMetadata.timezone : (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'));
+    setDateFormat(typeof userMetadata.date_format === 'string' ? userMetadata.date_format : 'dd/mm/yyyy');
+    setNotifyIncidentEmail(Boolean(userMetadata.notify_incident_email ?? true));
+    setNotifyIncidentPush(Boolean(userMetadata.notify_incident_push ?? true));
+    setNotifyPlanningEmail(Boolean(userMetadata.notify_planning_email ?? false));
+    setNotifyPlanningPush(Boolean(userMetadata.notify_planning_push ?? true));
+    setNotifyApproEmail(Boolean(userMetadata.notify_appro_email ?? true));
+    setNotifyApproPush(Boolean(userMetadata.notify_appro_push ?? false));
+  }, [userMetadata]);
 
   const previewClassName = (theme: UITheme) => {
     if (theme === 'industrial') return 'bf-preview-card bf-preview-industrial';
@@ -29,16 +115,111 @@ export function AccountSettings() {
     return 'bf-preview-card bf-preview-cockpit';
   };
 
+  const handleProfileSave = async () => {
+    if (!user) return;
+    setIsSavingProfile(true);
+    setProfileMessage(null);
+    setProfileError(null);
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        ...userMetadata,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        profile_title: profileTitle.trim(),
+        avatar_url: avatarUrl.trim(),
+      },
+    });
+
+    if (error) {
+      setProfileError('Impossible de mettre a jour votre profil pour le moment.');
+    } else {
+      setProfileMessage('Profil mis a jour.');
+    }
+
+    setIsSavingProfile(false);
+  };
+
+  const handlePreferenceSave = async () => {
+    if (!user) return;
+    setIsSavingPreferences(true);
+    setPreferenceMessage(null);
+    setPreferenceError(null);
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        ...userMetadata,
+        signature: signature.trim(),
+        language,
+        timezone,
+        date_format: dateFormat,
+        notify_incident_email: notifyIncidentEmail,
+        notify_incident_push: notifyIncidentPush,
+        notify_planning_email: notifyPlanningEmail,
+        notify_planning_push: notifyPlanningPush,
+        notify_appro_email: notifyApproEmail,
+        notify_appro_push: notifyApproPush,
+      },
+    });
+
+    if (error) {
+      setPreferenceError('Impossible de sauvegarder vos preferences pour le moment.');
+    } else {
+      setPreferenceMessage('Preferences enregistrees.');
+    }
+
+    setIsSavingPreferences(false);
+  };
+
+  const handlePasswordSave = async () => {
+    setPasswordMessage(null);
+    setPasswordError(null);
+
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordError('Le mot de passe doit contenir au moins 8 caracteres.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('La confirmation du mot de passe ne correspond pas.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      setPasswordError('Impossible de modifier le mot de passe pour le moment.');
+    } else {
+      setPasswordMessage('Mot de passe mis a jour.');
+      setNewPassword('');
+      setConfirmPassword('');
+    }
+
+    setIsUpdatingPassword(false);
+  };
+
   return (
     <section className="space-y-5">
       <div className="surface-panel p-5 md:p-6">
-        <h2 className="text-xl font-black tracking-tight bf-text-primary">Parametres du compte</h2>
-        <p className="mt-1 text-sm bf-text-muted">
-          Choisissez votre style d interface selon votre contexte d usage.
-        </p>
-        <p className="mt-2 text-xs bf-text-muted">
-          {isThemeSyncing ? 'Synchronisation du style avec votre compte...' : 'Le style selectionne est memorise localement et synchronise avec votre compte.'}
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-xl font-black tracking-tight bf-text-primary">Compte utilisateur</h2>
+            <p className="mt-1 text-sm bf-text-muted">
+              Gerez vos informations personnelles, votre securite et l apparence de votre interface.
+            </p>
+            <p className="mt-2 text-xs bf-text-muted">
+              {isThemeSyncing ? 'Synchronisation du style avec votre compte...' : 'Vos preferences sont memorisees localement et synchronisees avec votre compte.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={signOut}
+            className="bf-button-secondary rounded-xl px-4 py-2.5 text-sm font-semibold"
+          >
+            Deconnexion
+          </button>
+        </div>
         {themeSyncError ? (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             <span>{themeSyncError}</span>
@@ -52,6 +233,82 @@ export function AccountSettings() {
             </button>
           </div>
         ) : null}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="surface-panel p-5 md:p-6 space-y-4">
+          <div>
+            <h3 className="text-lg font-black bf-text-primary">Profil</h3>
+            <p className="text-sm bf-text-muted mt-1">Mettez a jour votre identite utilisateur et la fonction affichee dans l application.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+              Prenom
+              <input className="bf-input w-full" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+              Nom
+              <input className="bf-input w-full" value={lastName} onChange={(event) => setLastName(event.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+              Profil / fonction
+              <input className="bf-input w-full" value={profileTitle} onChange={(event) => setProfileTitle(event.target.value)} placeholder="Ex: Conducteur de travaux" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+              Photo de profil / avatar (URL)
+              <input className="bf-input w-full" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="https://..." />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+              E-mail
+              <input className="bf-input w-full opacity-80" value={user?.email ?? ''} disabled readOnly />
+            </label>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar utilisateur" className="h-14 w-14 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">{currentInitials}</div>
+            )}
+            <div>
+              <p className="text-sm font-black bf-text-primary">{`${firstName} ${lastName}`.trim() || user?.email || 'Utilisateur'}</p>
+              <p className="text-sm bf-text-muted">{profileTitle || 'Fonction non renseignee'}</p>
+            </div>
+          </div>
+          {profileMessage ? <p className="text-sm text-emerald-700">{profileMessage}</p> : null}
+          {profileError ? <p className="text-sm text-red-600">{profileError}</p> : null}
+          <div className="flex justify-end">
+            <button type="button" onClick={handleProfileSave} disabled={isSavingProfile} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+              {isSavingProfile ? 'Enregistrement...' : 'Enregistrer le profil'}
+            </button>
+          </div>
+        </div>
+
+        <div className="surface-panel p-5 md:p-6 space-y-4">
+          <div>
+            <h3 className="text-lg font-black bf-text-primary">Securite</h3>
+            <p className="text-sm bf-text-muted mt-1">Changez votre mot de passe pour securiser votre compte.</p>
+          </div>
+          <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+            Nouveau mot de passe
+            <input type="password" className="bf-input w-full" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+            Confirmer le mot de passe
+            <input type="password" className="bf-input w-full" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" />
+          </label>
+          {passwordMessage ? <p className="text-sm text-emerald-700">{passwordMessage}</p> : null}
+          {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+          <div className="flex justify-end">
+            <button type="button" onClick={handlePasswordSave} disabled={isUpdatingPassword} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+              {isUpdatingPassword ? 'Mise a jour...' : 'Mettre a jour le mot de passe'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="surface-panel p-5 md:p-6">
+        <h3 className="text-lg font-black bf-text-primary">Preference d apparence</h3>
+        <p className="mt-1 text-sm bf-text-muted">Choisissez votre style d interface selon votre contexte d usage.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -95,6 +352,124 @@ export function AccountSettings() {
             </button>
           );
         })}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="surface-panel p-5 md:p-6 space-y-4">
+          <div>
+            <h3 className="text-lg font-black bf-text-primary">Notifications et preferences regionales</h3>
+            <p className="mt-1 text-sm bf-text-muted">Choisissez comment vous souhaitez etre prevenu et comment les donnees sont affichees.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+              Langue
+              <select className="bf-select w-full rounded-xl px-3 py-2" value={language} onChange={(event) => setLanguage(event.target.value)}>
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+              Fuseau horaire
+              <input className="bf-input w-full" value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Europe/Paris" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+              Format de date
+              <select className="bf-select w-full rounded-xl px-3 py-2" value={dateFormat} onChange={(event) => setDateFormat(event.target.value)}>
+                {DATE_FORMAT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+              Signature automatique
+              <textarea className="bf-textarea w-full rounded-xl px-3 py-2" rows={4} value={signature} onChange={(event) => setSignature(event.target.value)} placeholder="Ex: Valide par Jean Dupont, conducteur de travaux" />
+            </label>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-black bf-text-primary mb-3">Incidents</p>
+              <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
+                E-mail
+                <input type="checkbox" checked={notifyIncidentEmail} onChange={(event) => setNotifyIncidentEmail(event.target.checked)} />
+              </label>
+              <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
+                Push
+                <input type="checkbox" checked={notifyIncidentPush} onChange={(event) => setNotifyIncidentPush(event.target.checked)} />
+              </label>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-black bf-text-primary mb-3">Planning</p>
+              <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
+                E-mail
+                <input type="checkbox" checked={notifyPlanningEmail} onChange={(event) => setNotifyPlanningEmail(event.target.checked)} />
+              </label>
+              <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
+                Push
+                <input type="checkbox" checked={notifyPlanningPush} onChange={(event) => setNotifyPlanningPush(event.target.checked)} />
+              </label>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-black bf-text-primary mb-3">Approvisionnement</p>
+              <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
+                E-mail
+                <input type="checkbox" checked={notifyApproEmail} onChange={(event) => setNotifyApproEmail(event.target.checked)} />
+              </label>
+              <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
+                Push
+                <input type="checkbox" checked={notifyApproPush} onChange={(event) => setNotifyApproPush(event.target.checked)} />
+              </label>
+            </div>
+          </div>
+
+          {preferenceMessage ? <p className="text-sm text-emerald-700">{preferenceMessage}</p> : null}
+          {preferenceError ? <p className="text-sm text-red-600">{preferenceError}</p> : null}
+
+          <div className="flex justify-end">
+            <button type="button" onClick={handlePreferenceSave} disabled={isSavingPreferences} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+              {isSavingPreferences ? 'Enregistrement...' : 'Enregistrer les preferences'}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="surface-panel p-5 md:p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-black bf-text-primary">Session et appareils</h3>
+              <p className="mt-1 text-sm bf-text-muted">Vue rapide de votre session courante.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+              <p className="text-sm font-black bf-text-primary">Session active</p>
+              <p className="text-sm bf-text-muted">{currentSessionLabel}</p>
+              <p className="text-sm bf-text-muted">Derniere connexion: {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('fr-FR') : 'Non disponible'}</p>
+              <p className="text-xs text-slate-500">La liste complete des autres appareils n est pas exposee par le client frontend actuel.</p>
+            </div>
+          </div>
+
+          <div className="surface-panel p-5 md:p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-black bf-text-primary">Double authentification</h3>
+              <p className="mt-1 text-sm bf-text-muted">Renforcez la securite du compte avec un second facteur.</p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-black text-amber-800">Bientot disponible</p>
+              <p className="mt-1 text-sm text-amber-700">Le support 2FA n est pas encore branche dans cette interface. Je peux l ajouter des que la configuration MFA Supabase est activee sur le projet.</p>
+            </div>
+          </div>
+
+          <div className="surface-panel p-5 md:p-6">
+            <h3 className="text-lg font-black bf-text-primary">Autres elements utiles</h3>
+            <p className="mt-1 text-sm bf-text-muted">Pistes complementaires pour enrichir l espace compte.</p>
+            <div className="mt-4 grid gap-3">
+              {EXTRA_SETTINGS.map((item) => (
+                <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -7,6 +7,11 @@ interface SidebarProps {
   selectedProjectId?: string | null;
   onProjectChange?: (projectId: string) => void;
   onSignOut?: () => void;
+  currentUser?: {
+    name: string;
+    email?: string;
+    profile?: string;
+  };
 }
 
 type NavItem = {
@@ -31,13 +36,23 @@ function viewLinkClass(isActive: boolean) {
     : 'bf-nav-link rounded-xl px-4 py-3 font-semibold transition-colors';
 }
 
-export function Sidebar({ projects = [], selectedProjectId, onProjectChange, onSignOut }: SidebarProps) {
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+export function Sidebar({ projects = [], selectedProjectId, onProjectChange, currentUser }: SidebarProps) {
   const { can } = usePermission();
   const visibleEssentialItems = ESSENTIAL_ITEMS.filter((item) => can(item.permission));
+  const initials = getInitials(currentUser?.name ?? 'Compte');
 
   return (
     <aside className="hidden md:flex md:w-[300px] md:flex-shrink-0 md:h-screen md:border-r md:border-slate-200/70 md:bg-white/70 md:backdrop-blur-sm">
-      <nav className="w-full h-full overflow-y-auto px-5 py-6 space-y-6" aria-label="Navigation principale modules et projets">
+      <nav className="flex h-full w-full flex-col overflow-y-auto px-5 py-6" aria-label="Navigation principale modules et projets">
         <div className="space-y-3">
           {projects.length > 0 && onProjectChange ? (
             <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide bf-text-muted">
@@ -57,7 +72,7 @@ export function Sidebar({ projects = [], selectedProjectId, onProjectChange, onS
           ) : null}
         </div>
 
-        <div>
+        <div className="mt-6 flex-1">
           <p className="text-[11px] uppercase tracking-[0.12em] bf-text-muted mb-2 font-bold">Modules</p>
           <div className="flex flex-col gap-2">
           {visibleEssentialItems.map((item) => (
@@ -68,15 +83,22 @@ export function Sidebar({ projects = [], selectedProjectId, onProjectChange, onS
         </div>
         </div>
 
-        {onSignOut ? (
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="bf-button-secondary w-full rounded-xl px-4 py-3 text-sm font-semibold text-left"
+        <div className="mt-6 border-t border-slate-200/80 pt-4">
+          <NavLink
+            to="/parametres"
+            className={({ isActive }) => `${isActive ? 'bf-nav-link bf-nav-link-active' : 'bf-nav-link'} flex w-full items-center gap-3 rounded-2xl px-4 py-3 transition-colors`}
           >
-            Deconnexion
-          </button>
-        ) : null}
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">
+              {initials}
+            </span>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-sm font-black bf-text-primary">{currentUser?.name ?? 'Compte utilisateur'}</span>
+              <span className="block truncate text-xs bf-text-muted">
+                {currentUser?.profile ?? currentUser?.email ?? 'Profil et preferences'}
+              </span>
+            </span>
+          </NavLink>
+        </div>
       </nav>
     </aside>
   );

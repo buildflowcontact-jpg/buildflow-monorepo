@@ -183,6 +183,15 @@ function App() {
   const userRole = user?.email?.endsWith('@be.com') || user?.email?.endsWith('@admin.com')
     ? t('roleBe')
     : t('roleChantier');
+  const userMetadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const sidebarUserName = [userMetadata.first_name, userMetadata.last_name]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ')
+    || user?.email?.split('@')[0]
+    || 'Compte utilisateur';
+  const sidebarUserProfile = typeof userMetadata.profile_title === 'string' && userMetadata.profile_title.trim().length > 0
+    ? userMetadata.profile_title
+    : userRole;
 
   const projectOptions = projects.map((project) => ({
     id: project.id,
@@ -212,6 +221,11 @@ function App() {
             selectedProjectId={resolvedProjectId}
             onProjectChange={setCurrentProjectId}
             onSignOut={signOut}
+            currentUser={{
+              name: sidebarUserName,
+              email: user?.email ?? undefined,
+              profile: sidebarUserProfile,
+            }}
           />
 
           <main className="min-w-0 flex-1 space-y-6 md:h-full md:overflow-y-auto md:px-8 md:py-8">
