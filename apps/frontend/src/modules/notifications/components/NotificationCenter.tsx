@@ -7,6 +7,7 @@ import {
   useMarkAllNotificationsRead,
 } from '../hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BodyPortal } from '@/components/ui/BodyPortal';
 
 interface NotificationCenterProps {
   projectId: string;
@@ -51,22 +52,23 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ projectI
   const orderedGroups = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-end"
-      onClick={onClose}
-    >
+    <BodyPortal>
       <motion.div
-        initial={{ x: 400 }}
-        animate={{ x: 0 }}
-        exit={{ x: 400 }}
-        transition={{ duration: 0.22 }}
-        className="h-full w-96 bg-white shadow-lg overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 bg-black bg-opacity-50 z-[1100] flex items-start justify-end"
+        onClick={onClose}
       >
+        <motion.div
+          initial={{ x: 400 }}
+          animate={{ x: 0 }}
+          exit={{ x: 400 }}
+          transition={{ duration: 0.22 }}
+          className="h-full w-96 bg-white shadow-lg overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
           <div>
@@ -176,7 +178,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ projectI
             </AnimatePresence>
           )}
         </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </BodyPortal>
   );
 };

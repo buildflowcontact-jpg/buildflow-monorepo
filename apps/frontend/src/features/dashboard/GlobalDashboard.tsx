@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CalendarCheck2, Clock3, Droplets, Info, PackageX, Sun, ThermometerSun, Users, Wallet, Wind } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Info, PackageX, Users, Wallet } from 'lucide-react';
 import { usePortfolioDashboard } from '@/modules/kpi/hooks/usePortfolioDashboard';
 import { useAuth } from '@/modules/chantier/hooks/useAuth';
 import { useProjectStore } from '@/store/projectStore';
 import { formatCurrency, normalizeCurrency, resolveUserCurrency } from '@/utils/currency';
-import { formatTemperature, resolveUserTemperatureUnit } from '@/utils/temperature';
+
 import { SkeletonCard, SkeletonKpiGrid } from '@/components/ui/Skeleton';
 
 function RingProgress({ value }: { value: number }) {
@@ -70,7 +70,6 @@ export function GlobalDashboard() {
   const leadProject = sortedProjects[0] ?? null;
   const userMetadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const effectiveCurrency = resolveUserCurrency(userMetadata, currentProjectId ?? leadProject?.id ?? null);
-  const effectiveTemperatureUnit = resolveUserTemperatureUnit(userMetadata, currentProjectId ?? leadProject?.id ?? null);
 
   if (isLoading) {
     return (
@@ -139,13 +138,12 @@ export function GlobalDashboard() {
   ];
 
   const forecast = [
-    { day: 'Mar.', max: 18, min: 10 },
-    { day: 'Mer.', max: 20, min: 11 },
-    { day: 'Jeu.', max: 19, min: 9 },
-    { day: 'Ven.', max: 17, min: 8 },
+    { day: 'Mar.', max: 18, min: 10, icon: Sun, color: 'text-amber-500' },
+    { day: 'Mer.', max: 20, min: 11, icon: Sun, color: 'text-amber-500' },
+    { day: 'Jeu.', max: 19, min: 9, icon: CloudRain, color: 'text-sky-500' },
+    { day: 'Ven.', max: 17, min: 8, icon: Cloud, color: 'text-slate-400' },
   ];
 
-  const displayedTemperature = formatTemperature(18, effectiveTemperatureUnit);
   const plannedProgress = [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 90, 100];
   const actualBase = [8, 12, 22, 25, 32, 35, 44, 51, 58, 64, 72, 84];
   const scale = completion > 0 ? completion / actualBase[actualBase.length - 1] : 0;
@@ -157,7 +155,7 @@ export function GlobalDashboard() {
   });
 
   const chartWidth = 640;
-  const chartHeight = 220;
+  const chartHeight = 280;
   const chartPaddingX = 16;
   const chartPaddingTop = 14;
   const chartPaddingBottom = 28;
@@ -176,6 +174,31 @@ export function GlobalDashboard() {
           </div>
         </div>
       </section>
+
+      {(data.lateOrdersToPend > 0 || data.criticalIncidents > 0) && (
+        <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-3">
+          <AlertTriangle size={18} className="shrink-0 text-red-600" />
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            {data.lateOrdersToPend > 0 && (
+              <span className="font-semibold text-red-700">
+                {data.lateOrdersToPend} commande{data.lateOrdersToPend > 1 ? 's' : ''} en retard
+              </span>
+            )}
+            {data.criticalIncidents > 0 && (
+              <span className="font-semibold text-amber-700">
+                {data.criticalIncidents} incident{data.criticalIncidents > 1 ? 's' : ''} critique{data.criticalIncidents > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="ml-auto shrink-0 text-xs font-bold text-red-600 underline hover:text-red-800"
+            onClick={() => navigate('/incidents')}
+          >
+            Voir les alertes →
+          </button>
+        </div>
+      )}
 
       <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -273,7 +296,7 @@ export function GlobalDashboard() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl border border-slate-200 bg-white p-4">
+        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-violet-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-sm font-black text-slate-900">Budget</p>
             <Wallet size={16} className="text-violet-600" />
@@ -293,7 +316,7 @@ export function GlobalDashboard() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-4">
+        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-emerald-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-sm font-black text-slate-900">Charge equipe</p>
             <Users size={16} className="text-emerald-600" />
@@ -306,7 +329,7 @@ export function GlobalDashboard() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-4">
+        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-blue-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-sm font-black text-slate-900">Commandes</p>
             <PackageX size={16} className="text-blue-600" />
@@ -328,7 +351,7 @@ export function GlobalDashboard() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-4">
+        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-red-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-sm font-black text-slate-900">Incidents</p>
             <AlertTriangle size={16} className="text-red-600" />
@@ -371,7 +394,7 @@ export function GlobalDashboard() {
               <span>Reel en retard</span>
             </div>
           </div>
-          <div className="mt-4 h-56 w-full">
+          <div className="mt-4 h-72 w-full">
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full w-full">
               {[0, 25, 50, 75, 100].map((tick) => (
                 <line
@@ -453,66 +476,34 @@ export function GlobalDashboard() {
           </div>
         </article>
 
-        <article className="relative overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5">
-          <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-sky-300/30 blur-2xl" />
-          <div className="pointer-events-none absolute -left-10 bottom-0 h-24 w-24 rounded-full bg-cyan-200/40 blur-2xl" />
-
-          <div className="relative flex items-start justify-between gap-3">
-            <div>
-              <h3 className="text-base font-black text-slate-900">Meteo sur site</h3>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-sky-700/80">Unite active: °{effectiveTemperatureUnit}</p>
-            </div>
-            <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1 text-[11px] font-bold text-sky-700">Conditions stables</span>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <CalendarDays size={16} className="text-blue-600" />
+            <h3 className="text-base font-black text-slate-900">Prochaines echeances</h3>
           </div>
-
-          <div className="relative mt-4 flex items-center gap-3 rounded-2xl border border-white/60 bg-white/70 p-3 backdrop-blur-sm">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-amber-100 text-amber-600">
-              <Sun size={22} />
-            </div>
-            <div>
-              <p className="text-4xl font-black leading-none text-slate-900">{displayedTemperature}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-600">Ensoleille</p>
-            </div>
-          </div>
-
-          <div className="relative mt-4 grid grid-cols-3 gap-2.5 text-xs">
-            <div className="rounded-xl border border-white/60 bg-white/75 px-2 py-2">
-              <div className="flex items-center gap-1 text-slate-500">
-                <Wind size={12} />
-                <span>Vent</span>
-              </div>
-              <p className="mt-1 text-sm font-black text-slate-800">15 km/h</p>
-            </div>
-            <div className="rounded-xl border border-white/60 bg-white/75 px-2 py-2">
-              <div className="flex items-center gap-1 text-slate-500">
-                <Droplets size={12} />
-                <span>Humidite</span>
-              </div>
-              <p className="mt-1 text-sm font-black text-slate-800">45%</p>
-            </div>
-            <div className="rounded-xl border border-white/60 bg-white/75 px-2 py-2">
-              <div className="flex items-center gap-1 text-slate-500">
-                <ThermometerSun size={12} />
-                <span>Ressenti</span>
-              </div>
-              <p className="mt-1 text-sm font-black text-slate-800">{formatTemperature(19, effectiveTemperatureUnit)}</p>
-            </div>
-          </div>
-
-          <div className="relative mt-5 grid grid-cols-4 gap-2 text-center">
-            {forecast.map((day) => (
-              <div key={day.day} className="rounded-xl border border-white/60 bg-white/80 px-1 py-2 shadow-[0_4px_14px_rgba(125,211,252,0.16)]">
-                <p className="text-[10px] font-bold text-slate-500">{day.day}</p>
-                <CalendarCheck2 size={14} className="mx-auto my-1 text-sky-500" />
-                <p className="text-[10px] font-semibold text-slate-700">{formatTemperature(day.max, effectiveTemperatureUnit)}</p>
-                <p className="text-[10px] text-slate-400">{formatTemperature(day.min, effectiveTemperatureUnit)}</p>
+          <div className="space-y-2">
+            {([
+              { label: 'Clos couvert', date: '15 juil. 2024', tone: 'active' as const },
+              { label: 'Second oeuvre debut', date: '01 sept. 2024', tone: 'upcoming' as const },
+              { label: 'Reception provisoire', date: '15 nov. 2024', tone: 'upcoming' as const },
+              { label: 'Livraison finale', date: dateShort(leadProject?.plannedEndDate ?? null), tone: 'upcoming' as const },
+            ] as const).map((item) => (
+              <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <StatusDot tone={item.tone} />
+                  <span className="text-sm font-semibold text-slate-800">{item.label}</span>
+                </div>
+                <span className="shrink-0 text-xs text-slate-500">{item.date}</span>
               </div>
             ))}
           </div>
-
-          <button type="button" className="relative mt-4 inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition-colors hover:bg-white">
-            <Clock3 size={12} />
-            Voir la meteo detaillee
+          <button
+            type="button"
+            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+            onClick={() => navigate('/planifier')}
+          >
+            <CalendarDays size={12} />
+            Voir le planning complet
           </button>
         </article>
       </section>

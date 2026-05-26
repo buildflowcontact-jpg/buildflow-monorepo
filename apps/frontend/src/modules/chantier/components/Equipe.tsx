@@ -3,6 +3,7 @@ import { useZodForm } from "@/hooks/useZodForm"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/Spinner"
+import { BodyPortal } from "@/components/ui/BodyPortal"
 import { useToast } from "@/ui/ToastProvider"
 import { supabase } from "@/lib/supabase"
 import { useWorkers, useCreateWorker, useUpdateWorker, useDeleteWorker } from "@/modules/rh-securite/hooks/useRHSecurity"
@@ -265,8 +266,9 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
       </div>
 
       {selectedMember ? (
-        <div className="fixed inset-0 z-[1000] bg-black/40 flex items-center justify-center px-2 md:px-4" role="dialog" aria-modal="true" style={{position:'fixed',left:0,top:0,width:'100vw',height:'100vh'}}>
-          <div className="bf-modal w-full max-w-4xl p-5 space-y-4 max-h-[90vh] overflow-auto shadow-2xl border-2 border-blue-200 bg-white">
+        <BodyPortal>
+          <div className="fixed inset-0 z-[1100] bg-black/40 flex items-center justify-center px-2 md:px-4" role="dialog" aria-modal="true" style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh' }}>
+            <div className="bf-modal w-full max-w-4xl p-5 space-y-4 max-h-[90vh] overflow-auto shadow-2xl border-2 border-blue-200 bg-white">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h4 className="bf-text-primary font-black text-xl">{selectedMember.full_name}</h4>
@@ -341,8 +343,9 @@ export function Equipe({ projectId, projectName }: EquipeProps) {
                 </div>
               </div>
             )}
+            </div>
           </div>
-        </div>
+        </BodyPortal>
       ) : null}
     </div>
   )

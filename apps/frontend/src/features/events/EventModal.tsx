@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { BodyPortal } from '@/components/ui/BodyPortal';
 
 export function EventModal({
   open,
@@ -25,19 +26,20 @@ export function EventModal({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
+        <BodyPortal>
           <motion.div
-            className="bg-card rounded-lg shadow-lg p-6 w-full max-w-md border border-border text-foreground"
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-[1100]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
+            <motion.div
+              className="bg-card rounded-lg shadow-lg p-6 w-full max-w-md border border-border text-foreground"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            >
         <h2 className="font-bold text-lg mb-4">{initialData ? 'Éditer l’événement' : 'Nouvel événement'}</h2>
         <form
           onSubmit={e => {
@@ -82,8 +84,9 @@ export function EventModal({
             </button>
           </div>
         </form>
+            </motion.div>
           </motion.div>
-        </motion.div>
+        </BodyPortal>
       )}
     </AnimatePresence>
   );

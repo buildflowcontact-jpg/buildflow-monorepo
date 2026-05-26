@@ -5,6 +5,7 @@
  */
 import { useConflictStore } from "@/store/conflictStore";
 import type { ConflictResolutionChoice } from "@/services/conflict/types";
+import { BodyPortal } from "@/components/ui/BodyPortal";
 
 const FIELD_LABELS: Record<string, string> = {
   title: "Titre",
@@ -36,8 +37,9 @@ export const ConflictModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl bg-neutral-900 shadow-2xl border border-orange-500/40 overflow-hidden">
+    <BodyPortal>
+      <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/75 backdrop-blur-sm">
+        <div className="w-full max-w-2xl rounded-2xl bg-neutral-900 shadow-2xl border border-orange-500/40 overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 bg-orange-900/40 px-6 py-4 border-b border-orange-500/30">
           <span className="text-2xl">⚠️</span>
@@ -116,7 +118,8 @@ export const ConflictModal = () => {
             🔀 Fusion automatique
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </BodyPortal>
   );
 };

@@ -35,7 +35,7 @@ const ESSENTIAL_ITEMS: NavItem[] = [
 
 function viewLinkClass(isActive: boolean) {
   return isActive
-    ? 'bf-nav-link bf-nav-link-active rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 font-semibold text-blue-700'
+    ? 'bf-nav-link bf-nav-link-active rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 font-semibold text-blue-700 shadow-[inset_3px_0_0_#2563eb]'
     : 'bf-nav-link rounded-xl border border-transparent px-3 py-2.5 font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900';
 }
 

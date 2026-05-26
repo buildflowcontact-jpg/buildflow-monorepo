@@ -4,6 +4,7 @@ import { useZodForm } from "@/hooks/useZodForm"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/Spinner"
+import { BodyPortal } from "@/components/ui/BodyPortal"
 import { supabase } from "@/lib/supabase"
 import { uploadAttachmentToSupabase } from "@/modules/approvisionnement/services/uploadAttachmentToSupabase"
 
@@ -270,8 +271,9 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" role="dialog" aria-modal="true">
-          <form
+        <BodyPortal>
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[1100]" role="dialog" aria-modal="true">
+            <form
             onSubmit={form.handleSubmit(onSubmit)}
             className="bf-modal p-6 w-full max-w-sm space-y-4"
             aria-label={editDoc ? "Éditer document" : "Nouveau document"}
@@ -304,8 +306,9 @@ export function DocumentList({ projectId, onSelect }: DocumentListProps) {
                 {form.formState.isSubmitting ? <Spinner size={16} /> : "Valider"}
               </Button>
             </div>
-          </form>
-        </div>
+            </form>
+          </div>
+        </BodyPortal>
       )}
     </div>
   )
