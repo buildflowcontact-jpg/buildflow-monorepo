@@ -39,6 +39,15 @@ const DATE_FORMAT_OPTIONS = [
   { value: 'mm/dd/yyyy', label: 'MM/JJ/AAAA' },
 ];
 
+type AccountTab = 'profile' | 'security' | 'appearance' | 'preferences';
+
+const ACCOUNT_TABS: Array<{ id: AccountTab; label: string }> = [
+  { id: 'profile', label: 'Profil' },
+  { id: 'security', label: 'Securite' },
+  { id: 'appearance', label: 'Apparence' },
+  { id: 'preferences', label: 'Preferences' },
+];
+
 function getInitials(firstName: string, lastName: string, fallback: string) {
   const composed = `${firstName} ${lastName}`.trim();
   const source = composed || fallback;
@@ -65,6 +74,8 @@ export function AccountSettings() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [signature, setSignature] = useState('');
   const [language, setLanguage] = useState('fr');
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris');
@@ -83,6 +94,7 @@ export function AccountSettings() {
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState<AccountTab>('profile');
   const currentSessionLabel = useMemo(() => {
     const parts = [navigator.platform, navigator.language].filter(Boolean);
     return parts.join(' · ');
@@ -97,6 +109,8 @@ export function AccountSettings() {
     setLastName(typeof userMetadata.last_name === 'string' ? userMetadata.last_name : '');
     setProfileTitle(typeof userMetadata.profile_title === 'string' ? userMetadata.profile_title : '');
     setAvatarUrl(typeof userMetadata.avatar_url === 'string' ? userMetadata.avatar_url : '');
+    setAvatarFile(null);
+    setAvatarPreviewUrl(null);
     setSignature(typeof userMetadata.signature === 'string' ? userMetadata.signature : '');
     setLanguage(typeof userMetadata.language === 'string' ? userMetadata.language : 'fr');
     setTimezone(typeof userMetadata.timezone === 'string' ? userMetadata.timezone : (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'));
@@ -108,6 +122,14 @@ export function AccountSettings() {
     setNotifyApproEmail(Boolean(userMetadata.notify_appro_email ?? true));
     setNotifyApproPush(Boolean(userMetadata.notify_appro_push ?? false));
   }, [userMetadata]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
 
   const previewClassName = (theme: UITheme) => {
     if (theme === 'industrial') return 'bf-preview-card bf-preview-industrial';
@@ -121,24 +143,72 @@ export function AccountSettings() {
     setProfileMessage(null);
     setProfileError(null);
 
+    let nextAvatarUrl = avatarUrl.trim();
+
+    if (avatarFile) {
+      const safeName = avatarFile.name.replace(/\s+/g, '_');
+      const filePath = `profiles/${user.id}/avatar-${Date.now()}-${safeName}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from('project-media')
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setProfileError('Impossible de televerser votre photo de profil pour le moment.');
+        setIsSavingProfile(false);
+        return;
+      }
+
+      nextAvatarUrl = supabase.storage.from('project-media').getPublicUrl(data.path).data.publicUrl;
+    }
+
     const { error } = await supabase.auth.updateUser({
       data: {
         ...userMetadata,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         profile_title: profileTitle.trim(),
-        avatar_url: avatarUrl.trim(),
+        avatar_url: nextAvatarUrl,
       },
     });
 
     if (error) {
       setProfileError('Impossible de mettre a jour votre profil pour le moment.');
     } else {
+      setAvatarUrl(nextAvatarUrl);
+      setAvatarFile(null);
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+      setAvatarPreviewUrl(null);
       setProfileMessage('Profil mis a jour.');
     }
 
     setIsSavingProfile(false);
   };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(avatarPreviewUrl);
+    }
+
+    if (!file) {
+      setAvatarFile(null);
+      setAvatarPreviewUrl(null);
+      return;
+    }
+
+    setAvatarFile(file);
+    setAvatarPreviewUrl(URL.createObjectURL(file));
+    setProfileMessage(null);
+    setProfileError(null);
+  };
+
+  const displayedAvatarUrl = avatarPreviewUrl ?? avatarUrl;
 
   const handlePreferenceSave = async () => {
     if (!user) return;
@@ -255,23 +325,27 @@ export function AccountSettings() {
               <input className="bf-input w-full" value={profileTitle} onChange={(event) => setProfileTitle(event.target.value)} placeholder="Ex: Conducteur de travaux" />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
-              Photo de profil / avatar (URL)
-              <input className="bf-input w-full" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="https://..." />
+              Photo de profil
+              <input type="file" accept="image/*" className="bf-input w-full file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white" onChange={handleAvatarFileChange} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
               E-mail
               <input className="bf-input w-full opacity-80" value={user?.email ?? ''} disabled readOnly />
             </label>
           </div>
+          <p className="text-xs bf-text-muted">
+            Selectionnez directement une image depuis votre appareil. La photo sera envoyee a votre espace de stockage lors de l enregistrement du profil.
+          </p>
           <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar utilisateur" className="h-14 w-14 rounded-full object-cover" />
+            {displayedAvatarUrl ? (
+              <img src={displayedAvatarUrl} alt="Avatar utilisateur" className="h-14 w-14 rounded-full object-cover" />
             ) : (
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">{currentInitials}</div>
             )}
             <div>
               <p className="text-sm font-black bf-text-primary">{`${firstName} ${lastName}`.trim() || user?.email || 'Utilisateur'}</p>
               <p className="text-sm bf-text-muted">{profileTitle || 'Fonction non renseignee'}</p>
+              <p className="text-xs text-slate-500">{avatarFile ? `Nouveau fichier pret: ${avatarFile.name}` : 'Aucune nouvelle photo selectionnee.'}</p>
             </div>
           </div>
           {profileMessage ? <p className="text-sm text-emerald-700">{profileMessage}</p> : null}
@@ -311,164 +385,300 @@ export function AccountSettings() {
         <p className="mt-1 text-sm bf-text-muted">Choisissez votre style d interface selon votre contexte d usage.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {THEMES.map((theme) => {
-          const selected = uiTheme === theme.id;
-
-          return (
+      <div className="bf-tabs-shell">
+        <div className="bf-tabs-bar flex flex-wrap">
+          {ACCOUNT_TABS.map((tab) => (
             <button
-              key={theme.id}
+              key={tab.id}
               type="button"
-              onClick={() => setUITheme(theme.id)}
-              className={`surface-panel p-4 text-left transition-all ${selected ? 'ring-2 ring-cyan-500' : 'hover:-translate-y-0.5'}`}
-              aria-pressed={selected}
-              disabled={isThemeSyncing}
+              onClick={() => setActiveTab(tab.id)}
+              className={`bf-tab min-w-[140px] flex-1 px-4 py-3 font-medium text-center border-b-2 transition-colors ${
+                activeTab === tab.id ? 'bf-tab-active' : 'bf-tab-inactive'
+              }`}
             >
-              <p className="text-sm font-black uppercase tracking-wide bf-text-primary">
-                {uiThemeLabels[theme.id]}
-              </p>
-              <p className="mt-2 text-sm bf-text-muted">{theme.description}</p>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-              <div className={`mt-4 p-3 ${previewClassName(theme.id)}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-600">Apercu</span>
-                  <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${theme.id === 'industrial' ? 'bg-slate-900 text-amber-300' : theme.id === 'cockpit' ? 'bg-cyan-700 text-white' : 'bg-blue-600 text-white'}`}>Etat</span>
+        <div className="p-5 md:p-6">
+          {activeTab === 'profile' ? (
+            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="surface-panel p-5 md:p-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-black bf-text-primary">Profil</h3>
+                  <p className="text-sm bf-text-muted mt-1">Mettez a jour votre identite utilisateur et la fonction affichee dans l application.</p>
                 </div>
-                <div className={`mt-3 rounded-lg p-2 text-xs ${theme.id === 'industrial' ? 'border-2 border-slate-900 bg-white text-slate-900' : theme.id === 'cockpit' ? 'border border-cyan-100 bg-white/80 text-slate-700' : 'border border-slate-200 bg-slate-50 text-slate-600'}`}>
-                  Carte document / action / statut
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+                    Prenom
+                    <input className="bf-input w-full" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+                    Nom
+                    <input className="bf-input w-full" value={lastName} onChange={(event) => setLastName(event.target.value)} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Profil / fonction
+                    <input className="bf-input w-full" value={profileTitle} onChange={(event) => setProfileTitle(event.target.value)} placeholder="Ex: Conducteur de travaux" />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Photo de profil
+                    <input type="file" accept="image/*" className="bf-input w-full file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white" onChange={handleAvatarFileChange} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    E-mail
+                    <input className="bf-input w-full opacity-80" value={user?.email ?? ''} disabled readOnly />
+                  </label>
                 </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <span className={`h-3 w-3 rounded-full ${theme.id === 'industrial' ? 'bg-amber-400' : theme.id === 'cockpit' ? 'bg-cyan-500' : 'bg-blue-500'}`} />
-                  <div className={`h-8 flex-1 rounded-lg ${theme.id === 'industrial' ? 'border-2 border-slate-900 bg-slate-50' : theme.id === 'cockpit' ? 'border border-white/60 bg-white/70' : 'bg-white border border-slate-200'}`} />
-                  <div className={`h-8 w-16 rounded-lg ${theme.id === 'industrial' ? 'bg-slate-900' : theme.id === 'cockpit' ? 'bg-cyan-700' : 'bg-blue-600'}`} />
+                <p className="text-xs bf-text-muted">
+                  Selectionnez directement une image depuis votre appareil. La photo sera envoyee a votre espace de stockage lors de l enregistrement du profil.
+                </p>
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  {displayedAvatarUrl ? (
+                    <img src={displayedAvatarUrl} alt="Avatar utilisateur" className="h-14 w-14 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">{currentInitials}</div>
+                  )}
+                  <div>
+                    <p className="text-sm font-black bf-text-primary">{`${firstName} ${lastName}`.trim() || user?.email || 'Utilisateur'}</p>
+                    <p className="text-sm bf-text-muted">{profileTitle || 'Fonction non renseignee'}</p>
+                    <p className="text-xs text-slate-500">{avatarFile ? `Nouveau fichier pret: ${avatarFile.name}` : 'Aucune nouvelle photo selectionnee.'}</p>
+                  </div>
+                </div>
+                {profileMessage ? <p className="text-sm text-emerald-700">{profileMessage}</p> : null}
+                {profileError ? <p className="text-sm text-red-600">{profileError}</p> : null}
+                <div className="flex justify-end">
+                  <button type="button" onClick={handleProfileSave} disabled={isSavingProfile} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+                    {isSavingProfile ? 'Enregistrement...' : 'Enregistrer le profil'}
+                  </button>
                 </div>
               </div>
 
-              {selected ? (
-                <p className="mt-3 text-xs font-bold text-emerald-700">Style actif</p>
-              ) : (
-                <p className="mt-3 text-xs font-semibold text-slate-500">Cliquer pour activer</p>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="surface-panel p-5 md:p-6 space-y-4">
-          <div>
-            <h3 className="text-lg font-black bf-text-primary">Notifications et preferences regionales</h3>
-            <p className="mt-1 text-sm bf-text-muted">Choisissez comment vous souhaitez etre prevenu et comment les donnees sont affichees.</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
-              Langue
-              <select className="bf-select w-full rounded-xl px-3 py-2" value={language} onChange={(event) => setLanguage(event.target.value)}>
-                {LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
-              Fuseau horaire
-              <input className="bf-input w-full" value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Europe/Paris" />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
-              Format de date
-              <select className="bf-select w-full rounded-xl px-3 py-2" value={dateFormat} onChange={(event) => setDateFormat(event.target.value)}>
-                {DATE_FORMAT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
-              Signature automatique
-              <textarea className="bf-textarea w-full rounded-xl px-3 py-2" rows={4} value={signature} onChange={(event) => setSignature(event.target.value)} placeholder="Ex: Valide par Jean Dupont, conducteur de travaux" />
-            </label>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-black bf-text-primary mb-3">Incidents</p>
-              <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
-                E-mail
-                <input type="checkbox" checked={notifyIncidentEmail} onChange={(event) => setNotifyIncidentEmail(event.target.checked)} />
-              </label>
-              <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
-                Push
-                <input type="checkbox" checked={notifyIncidentPush} onChange={(event) => setNotifyIncidentPush(event.target.checked)} />
-              </label>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-black bf-text-primary mb-3">Planning</p>
-              <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
-                E-mail
-                <input type="checkbox" checked={notifyPlanningEmail} onChange={(event) => setNotifyPlanningEmail(event.target.checked)} />
-              </label>
-              <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
-                Push
-                <input type="checkbox" checked={notifyPlanningPush} onChange={(event) => setNotifyPlanningPush(event.target.checked)} />
-              </label>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-black bf-text-primary mb-3">Approvisionnement</p>
-              <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
-                E-mail
-                <input type="checkbox" checked={notifyApproEmail} onChange={(event) => setNotifyApproEmail(event.target.checked)} />
-              </label>
-              <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
-                Push
-                <input type="checkbox" checked={notifyApproPush} onChange={(event) => setNotifyApproPush(event.target.checked)} />
-              </label>
-            </div>
-          </div>
-
-          {preferenceMessage ? <p className="text-sm text-emerald-700">{preferenceMessage}</p> : null}
-          {preferenceError ? <p className="text-sm text-red-600">{preferenceError}</p> : null}
-
-          <div className="flex justify-end">
-            <button type="button" onClick={handlePreferenceSave} disabled={isSavingPreferences} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
-              {isSavingPreferences ? 'Enregistrement...' : 'Enregistrer les preferences'}
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-5">
-          <div className="surface-panel p-5 md:p-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-black bf-text-primary">Session et appareils</h3>
-              <p className="mt-1 text-sm bf-text-muted">Vue rapide de votre session courante.</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-              <p className="text-sm font-black bf-text-primary">Session active</p>
-              <p className="text-sm bf-text-muted">{currentSessionLabel}</p>
-              <p className="text-sm bf-text-muted">Derniere connexion: {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('fr-FR') : 'Non disponible'}</p>
-              <p className="text-xs text-slate-500">La liste complete des autres appareils n est pas exposee par le client frontend actuel.</p>
-            </div>
-          </div>
-
-          <div className="surface-panel p-5 md:p-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-black bf-text-primary">Double authentification</h3>
-              <p className="mt-1 text-sm bf-text-muted">Renforcez la securite du compte avec un second facteur.</p>
-            </div>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-black text-amber-800">Bientot disponible</p>
-              <p className="mt-1 text-sm text-amber-700">Le support 2FA n est pas encore branche dans cette interface. Je peux l ajouter des que la configuration MFA Supabase est activee sur le projet.</p>
-            </div>
-          </div>
-
-          <div className="surface-panel p-5 md:p-6">
-            <h3 className="text-lg font-black bf-text-primary">Autres elements utiles</h3>
-            <p className="mt-1 text-sm bf-text-muted">Pistes complementaires pour enrichir l espace compte.</p>
-            <div className="mt-4 grid gap-3">
-              {EXTRA_SETTINGS.map((item) => (
-                <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                  {item}
+              <div className="surface-panel p-5 md:p-6">
+                <h3 className="text-lg font-black bf-text-primary">Resume du compte</h3>
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide bf-text-muted">Nom affiche</p>
+                    <p className="mt-1 font-bold bf-text-primary">{`${firstName} ${lastName}`.trim() || 'Non renseigne'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide bf-text-muted">Fonction</p>
+                    <p className="mt-1 font-bold bf-text-primary">{profileTitle || 'Non renseignee'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide bf-text-muted">Adresse e-mail</p>
+                    <p className="mt-1 font-bold bf-text-primary">{user?.email ?? 'Non disponible'}</p>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {activeTab === 'security' ? (
+            <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+              <div className="surface-panel p-5 md:p-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-black bf-text-primary">Securite</h3>
+                  <p className="text-sm bf-text-muted mt-1">Changez votre mot de passe pour securiser votre compte.</p>
+                </div>
+                <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+                  Nouveau mot de passe
+                  <input type="password" className="bf-input w-full" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" />
+                </label>
+                <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+                  Confirmer le mot de passe
+                  <input type="password" className="bf-input w-full" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" />
+                </label>
+                {passwordMessage ? <p className="text-sm text-emerald-700">{passwordMessage}</p> : null}
+                {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+                <div className="flex justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    className="bf-button-secondary rounded-xl px-4 py-2.5 text-sm font-semibold"
+                  >
+                    Deconnexion
+                  </button>
+                  <button type="button" onClick={handlePasswordSave} disabled={isUpdatingPassword} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+                    {isUpdatingPassword ? 'Mise a jour...' : 'Mettre a jour le mot de passe'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="surface-panel p-5 md:p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-black bf-text-primary">Session et appareils</h3>
+                    <p className="mt-1 text-sm bf-text-muted">Vue rapide de votre session courante.</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                    <p className="text-sm font-black bf-text-primary">Session active</p>
+                    <p className="text-sm bf-text-muted">{currentSessionLabel}</p>
+                    <p className="text-sm bf-text-muted">Derniere connexion: {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('fr-FR') : 'Non disponible'}</p>
+                    <p className="text-xs text-slate-500">La liste complete des autres appareils n est pas exposee par le client frontend actuel.</p>
+                  </div>
+                </div>
+
+                <div className="surface-panel p-5 md:p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-black bf-text-primary">Double authentification</h3>
+                    <p className="mt-1 text-sm bf-text-muted">Renforcez la securite du compte avec un second facteur.</p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-black text-amber-800">Bientot disponible</p>
+                    <p className="mt-1 text-sm text-amber-700">Le support 2FA n est pas encore branche dans cette interface. Je peux l ajouter des que la configuration MFA Supabase est activee sur le projet.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === 'appearance' ? (
+            <div className="space-y-5">
+              <div className="surface-panel p-5 md:p-6">
+                <h3 className="text-lg font-black bf-text-primary">Preference d apparence</h3>
+                <p className="mt-1 text-sm bf-text-muted">Choisissez votre style d interface selon votre contexte d usage.</p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {THEMES.map((theme) => {
+                  const selected = uiTheme === theme.id;
+
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setUITheme(theme.id)}
+                      className={`surface-panel p-4 text-left transition-all ${selected ? 'ring-2 ring-cyan-500' : 'hover:-translate-y-0.5'}`}
+                      aria-pressed={selected}
+                      disabled={isThemeSyncing}
+                    >
+                      <p className="text-sm font-black uppercase tracking-wide bf-text-primary">
+                        {uiThemeLabels[theme.id]}
+                      </p>
+                      <p className="mt-2 text-sm bf-text-muted">{theme.description}</p>
+
+                      <div className={`mt-4 p-3 ${previewClassName(theme.id)}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-600">Apercu</span>
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${theme.id === 'industrial' ? 'bg-slate-900 text-amber-300' : theme.id === 'cockpit' ? 'bg-cyan-700 text-white' : 'bg-blue-600 text-white'}`}>Etat</span>
+                        </div>
+                        <div className={`mt-3 rounded-lg p-2 text-xs ${theme.id === 'industrial' ? 'border-2 border-slate-900 bg-white text-slate-900' : theme.id === 'cockpit' ? 'border border-cyan-100 bg-white/80 text-slate-700' : 'border border-slate-200 bg-slate-50 text-slate-600'}`}>
+                          Carte document / action / statut
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className={`h-3 w-3 rounded-full ${theme.id === 'industrial' ? 'bg-amber-400' : theme.id === 'cockpit' ? 'bg-cyan-500' : 'bg-blue-500'}`} />
+                          <div className={`h-8 flex-1 rounded-lg ${theme.id === 'industrial' ? 'border-2 border-slate-900 bg-slate-50' : theme.id === 'cockpit' ? 'border border-white/60 bg-white/70' : 'bg-white border border-slate-200'}`} />
+                          <div className={`h-8 w-16 rounded-lg ${theme.id === 'industrial' ? 'bg-slate-900' : theme.id === 'cockpit' ? 'bg-cyan-700' : 'bg-blue-600'}`} />
+                        </div>
+                      </div>
+
+                      {selected ? (
+                        <p className="mt-3 text-xs font-bold text-emerald-700">Style actif</p>
+                      ) : (
+                        <p className="mt-3 text-xs font-semibold text-slate-500">Cliquer pour activer</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === 'preferences' ? (
+            <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+              <div className="surface-panel p-5 md:p-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-black bf-text-primary">Notifications et preferences regionales</h3>
+                  <p className="mt-1 text-sm bf-text-muted">Choisissez comment vous souhaitez etre prevenu et comment les donnees sont affichees.</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+                    Langue
+                    <select className="bf-select w-full rounded-xl px-3 py-2" value={language} onChange={(event) => setLanguage(event.target.value)}>
+                      {LANGUAGE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary">
+                    Fuseau horaire
+                    <input className="bf-input w-full" value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Europe/Paris" />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Format de date
+                    <select className="bf-select w-full rounded-xl px-3 py-2" value={dateFormat} onChange={(event) => setDateFormat(event.target.value)}>
+                      {DATE_FORMAT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Signature automatique
+                    <textarea className="bf-textarea w-full rounded-xl px-3 py-2" rows={4} value={signature} onChange={(event) => setSignature(event.target.value)} placeholder="Ex: Valide par Jean Dupont, conducteur de travaux" />
+                  </label>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-black bf-text-primary mb-3">Incidents</p>
+                    <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
+                      E-mail
+                      <input type="checkbox" checked={notifyIncidentEmail} onChange={(event) => setNotifyIncidentEmail(event.target.checked)} />
+                    </label>
+                    <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
+                      Push
+                      <input type="checkbox" checked={notifyIncidentPush} onChange={(event) => setNotifyIncidentPush(event.target.checked)} />
+                    </label>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-black bf-text-primary mb-3">Planning</p>
+                    <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
+                      E-mail
+                      <input type="checkbox" checked={notifyPlanningEmail} onChange={(event) => setNotifyPlanningEmail(event.target.checked)} />
+                    </label>
+                    <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
+                      Push
+                      <input type="checkbox" checked={notifyPlanningPush} onChange={(event) => setNotifyPlanningPush(event.target.checked)} />
+                    </label>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-black bf-text-primary mb-3">Approvisionnement</p>
+                    <label className="flex items-center justify-between gap-3 text-sm bf-text-muted">
+                      E-mail
+                      <input type="checkbox" checked={notifyApproEmail} onChange={(event) => setNotifyApproEmail(event.target.checked)} />
+                    </label>
+                    <label className="mt-2 flex items-center justify-between gap-3 text-sm bf-text-muted">
+                      Push
+                      <input type="checkbox" checked={notifyApproPush} onChange={(event) => setNotifyApproPush(event.target.checked)} />
+                    </label>
+                  </div>
+                </div>
+
+                {preferenceMessage ? <p className="text-sm text-emerald-700">{preferenceMessage}</p> : null}
+                {preferenceError ? <p className="text-sm text-red-600">{preferenceError}</p> : null}
+
+                <div className="flex justify-end">
+                  <button type="button" onClick={handlePreferenceSave} disabled={isSavingPreferences} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+                    {isSavingPreferences ? 'Enregistrement...' : 'Enregistrer les preferences'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="surface-panel p-5 md:p-6">
+                <h3 className="text-lg font-black bf-text-primary">Autres elements utiles</h3>
+                <p className="mt-1 text-sm bf-text-muted">Pistes complementaires pour enrichir l espace compte.</p>
+                <div className="mt-4 grid gap-3">
+                  {EXTRA_SETTINGS.map((item) => (
+                    <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

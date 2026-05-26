@@ -11,30 +11,6 @@ const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
 };
 
-function KpiCard({
-  label,
-  children,
-  accent = 'default',
-}: {
-  label: string;
-  children: React.ReactNode;
-  accent?: 'default' | 'green' | 'red' | 'amber' | 'blue';
-}) {
-  const border = {
-    default: 'border-slate-200',
-    green: 'border-emerald-200',
-    red: 'border-red-200',
-    amber: 'border-amber-200',
-    blue: 'border-cyan-200',
-  }[accent];
-  return (
-    <div className={`bf-card-soft p-5 rounded-xl border ${border} min-h-[220px] flex flex-col justify-between space-y-3`}>
-      <p className="text-xs bf-text-muted uppercase tracking-wide font-semibold">{label}</p>
-      {children}
-    </div>
-  );
-}
-
 function Bar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
   return (
@@ -44,10 +20,10 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   );
 }
 
-function MiniChart({ values, colors }: { values: number[]; colors: string[] }) {
+function MiniTrend({ values, colors }: { values: number[]; colors: string[] }) {
   const max = Math.max(...values, 1);
   return (
-    <div className="flex items-end gap-1.5 h-12 pt-2">
+    <div className="flex items-end gap-1.5 h-12 pt-2" aria-hidden="true">
       {values.map((value, index) => {
         const height = `${Math.max(10, Math.round((value / max) * 100))}%`;
         return (
@@ -59,6 +35,116 @@ function MiniChart({ values, colors }: { values: number[]; colors: string[] }) {
           />
         );
       })}
+    </div>
+  );
+}
+
+function formatCurrencyCompact(value: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+    style: 'currency',
+    currency: 'EUR',
+  }).format(value);
+}
+
+function formatDateShort(value: string | null) {
+  if (!value) return 'Date non definie';
+  return new Date(value).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function getProjectTone(project: { delayedLabel: 'ok' | 'derive' | 'critique'; openCriticalIncidents: number; status: string }) {
+  if (project.status === 'completed') {
+    return {
+      shell: 'border-slate-200 bg-slate-50/80',
+      badge: 'bg-slate-200 text-slate-700',
+      label: 'Cloture',
+      accent: 'bg-slate-400',
+    };
+  }
+  if (project.openCriticalIncidents > 0 || project.delayedLabel === 'critique') {
+    return {
+      shell: 'border-red-200 bg-red-50/80 shadow-[0_8px_24px_rgba(239,68,68,0.08)]',
+      badge: 'bg-red-100 text-red-700',
+      label: 'Sous tension',
+      accent: 'bg-red-500',
+    };
+  }
+  if (project.delayedLabel === 'derive') {
+    return {
+      shell: 'border-amber-200 bg-amber-50/80 shadow-[0_8px_24px_rgba(245,158,11,0.08)]',
+      badge: 'bg-amber-100 text-amber-700',
+      label: 'A surveiller',
+      accent: 'bg-amber-400',
+    };
+  }
+  return {
+    shell: 'border-emerald-200 bg-emerald-50/70 shadow-[0_8px_24px_rgba(16,185,129,0.06)]',
+    badge: 'bg-emerald-100 text-emerald-700',
+    label: 'Maîtrise',
+    accent: 'bg-emerald-500',
+  };
+}
+
+function getProjectPhase(project: { status: string; completionPct: number }) {
+  if (project.status === 'completed') return 'Reception';
+  if (project.status === 'draft') return 'Preparation';
+  if (project.completionPct < 20) return 'Lancement';
+  if (project.completionPct < 70) return 'Execution';
+  return 'Finalisation';
+}
+
+function getProjectActionLabel(project: { delayedLabel: 'ok' | 'derive' | 'critique'; openCriticalIncidents: number; budgetRate: number; status: string }) {
+  if (project.status === 'completed') return 'Verifier les derniers livrables';
+  if (project.openCriticalIncidents > 0) return 'Declencher une revue terrain';
+  if (project.delayedLabel === 'critique') return 'Arbitrer budget et planning';
+  if (project.delayedLabel === 'derive') return 'Recadrer les priorites chantier';
+  if (project.budgetRate > 70) return 'Suivre les postes d engagement';
+  return 'Poursuivre le rythme d execution';
+}
+
+function getMilestoneState(completionPct: number, threshold: number) {
+  if (completionPct >= threshold) return 'done';
+  if (completionPct >= threshold - 20) return 'active';
+  return 'upcoming';
+}
+
+function MetricTile({
+  label,
+  value,
+  hint,
+  tone,
+  trend,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone: 'blue' | 'amber' | 'red' | 'green';
+  trend: number[];
+}) {
+  const toneStyles = {
+    blue: 'border-cyan-200 bg-cyan-50/80 text-cyan-700',
+    amber: 'border-amber-200 bg-amber-50/80 text-amber-700',
+    red: 'border-red-200 bg-red-50/80 text-red-700',
+    green: 'border-emerald-200 bg-emerald-50/80 text-emerald-700',
+  }[tone];
+  const trendColors = {
+    blue: ['bg-cyan-500', 'bg-sky-400', 'bg-indigo-500'],
+    amber: ['bg-amber-400', 'bg-orange-400', 'bg-yellow-500'],
+    red: ['bg-red-500', 'bg-rose-400', 'bg-amber-400'],
+    green: ['bg-emerald-500', 'bg-lime-400', 'bg-cyan-500'],
+  }[tone];
+
+  return (
+    <div className={`rounded-[24px] border p-5 ${toneStyles}`}>
+      <p className="text-[11px] font-black uppercase tracking-[0.22em]">{label}</p>
+      <p className="mt-4 text-3xl font-black text-slate-900">{value}</p>
+      <p className="mt-1 text-sm text-slate-600">{hint}</p>
+      <MiniTrend values={trend} colors={trendColors} />
     </div>
   );
 }
@@ -104,215 +190,390 @@ export function GlobalDashboard() {
   const workloadPct = totalEstimatedHours > 0
     ? Math.round((totalActualHours / totalEstimatedHours) * 100)
     : null;
+  const projectCount = data.projects.length;
+  const averageCompletion = projectCount > 0
+    ? Math.round(data.projects.reduce((sum, project) => sum + project.completionPct, 0) / projectCount)
+    : 0;
+  const topPriorityProjects = [...data.projects].sort((left, right) => {
+    const leftScore = (left.openCriticalIncidents * 100) + (left.delayedLabel === 'critique' ? 50 : left.delayedLabel === 'derive' ? 20 : 0) + left.budgetRate;
+    const rightScore = (right.openCriticalIncidents * 100) + (right.delayedLabel === 'critique' ? 50 : right.delayedLabel === 'derive' ? 20 : 0) + right.budgetRate;
+    return rightScore - leftScore;
+  });
+  const leadProject = topPriorityProjects[0] ?? data.projects[0];
+  const healthyProjects = data.projects.filter((project) => project.delayedLabel === 'ok' && project.openCriticalIncidents === 0).length;
+  const signalFeed = [
+    {
+      id: 'incidents',
+      title: data.criticalIncidents > 0 ? 'Incidents terrain critiques a traiter' : 'Aucun incident critique en attente',
+      detail: data.criticalIncidents > 0
+        ? `${data.criticalIncidents} incident${data.criticalIncidents > 1 ? 's' : ''} critique${data.criticalIncidents > 1 ? 's' : ''} et ${data.openIncidents} ouvert${data.openIncidents > 1 ? 's' : ''}.`
+        : 'Le front terrain est stable pour le moment.',
+      tone: data.criticalIncidents > 0 ? 'red' : 'green',
+    },
+    {
+      id: 'planning',
+      title: data.delayedProjects > 0 ? 'Planning sous surveillance' : 'Planning global aligne',
+      detail: data.delayedProjects > 0
+        ? `${data.delayedProjects} projet${data.delayedProjects > 1 ? 's' : ''} avec derive budget/delai.`
+        : 'Aucune derive majeure detectee sur le portefeuille.',
+      tone: data.delayedProjects > 0 ? 'amber' : 'green',
+    },
+    {
+      id: 'supply',
+      title: data.lateOrdersToPend > 0 ? 'Approvisionnements a relancer' : 'Approvisionnements sous controle',
+      detail: data.lateOrdersToPend > 0
+        ? `${data.lateOrdersToPend} commande${data.lateOrdersToPend > 1 ? 's' : ''} attendue${data.lateOrdersToPend > 1 ? 's' : ''} et ${data.lateDeliveries} livraison${data.lateDeliveries > 1 ? 's' : ''} hors delai.`
+        : 'Aucun retard fournisseur actif a ce stade.',
+      tone: data.lateOrdersToPend > 0 ? 'red' : data.lateDeliveries > 0 ? 'amber' : 'green',
+    },
+    {
+      id: 'team',
+      title: workloadPct !== null && workloadPct > 90 ? 'Charge equipe a arbitrer' : 'Charge equipe exploitable',
+      detail: totalEstimatedHours > 0
+        ? `${totalActualHours}h realisees pour ${totalEstimatedHours}h estimees.`
+        : `${totalActualHours}h remontees terrain, sans estimation consolidee.`,
+      tone: workloadPct !== null && workloadPct > 90 ? 'amber' : 'blue',
+    },
+  ] as const;
 
   return (
     <div className="space-y-6">
-
-      {/* 6 KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-
-        {/* 1. Budget vendu vs budget réel */}
-        <KpiCard label="Budget vendu vs budget réel" accent={budgetAccent}>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-xs bf-text-muted">Vendu</p>
-              <p className="text-xl font-black bf-text-primary">{(data.totalBudgetSold / 1000).toFixed(0)} k€</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs bf-text-muted">Consommé</p>
-              <p className={`text-xl font-black ${budgetPct >= 100 ? 'text-red-600' : budgetPct >= 80 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                {(data.totalBudgetSpent / 1000).toFixed(0)} k€
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs bf-text-muted">Taux</p>
-              <p className={`text-xl font-black ${budgetPct >= 100 ? 'text-red-600' : budgetPct >= 80 ? 'text-amber-600' : 'text-emerald-600'}`}>{budgetPct}%</p>
-            </div>
-          </div>
-          <Bar value={data.totalBudgetSpent} max={data.totalBudgetSold} color={budgetPct >= 100 ? 'bg-red-500' : budgetPct >= 80 ? 'bg-amber-400' : 'bg-emerald-500'} />
-          <MiniChart
-            values={[data.totalBudgetSold, data.totalBudgetSpent, Math.max(data.totalBudgetSold - data.totalBudgetSpent, 0)]}
-            colors={['bg-sky-400', 'bg-emerald-500', 'bg-indigo-400']}
-          />
-        </KpiCard>
-
-        {/* 2. Deadlines projets */}
-        <KpiCard label="Deadlines projets" accent={data.delayedProjects > 0 ? 'amber' : 'green'}>
-          <div className="space-y-2">
-            {data.projects.map((p) => (
-              <div key={p.id} className="flex items-center justify-between text-xs">
-                <span className="bf-text-primary font-medium truncate max-w-[120px]">{p.name}</span>
-                <div className="flex items-center gap-2">
-                  {p.plannedEndDate ? (
-                    <span className="bf-text-muted">{new Date(p.plannedEndDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
-                  ) : (
-                    <span className="text-slate-400 italic">Non définie</span>
-                  )}
-                  <span className={`px-1.5 py-0.5 rounded font-semibold ${
-                    p.delayedLabel === 'critique' ? 'bg-red-100 text-red-700' :
-                    p.delayedLabel === 'derive' ? 'bg-amber-100 text-amber-700' :
-                    'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {p.completionPct}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <MiniChart
-            values={data.projects.slice(0, 5).map((project) => project.completionPct)}
-            colors={['bg-emerald-500', 'bg-amber-400', 'bg-cyan-500', 'bg-indigo-500']}
-          />
-        </KpiCard>
-
-        {/* 3. Charge par membre */}
-        <KpiCard label="Charge équipe — estimée vs réalisée" accent={workloadPct !== null && workloadPct > 90 ? 'amber' : 'blue'}>
-          {data.workloadByMember.length === 0 ? (
-            <p className="text-sm bf-text-muted italic">Aucune saisie de temps</p>
-          ) : (
-            <div className="space-y-2">
-              {data.workloadByMember.slice(0, 4).map((m) => {
-                const pct = m.estimatedHours > 0 ? Math.min(Math.round((m.actualHours / m.estimatedHours) * 100), 100) : 0;
-                const shortId = m.workerId.slice(0, 8);
-                return (
-                  <div key={m.workerId} className="text-xs space-y-0.5">
-                    <div className="flex justify-between bf-text-muted">
-                      <span className="font-mono">{shortId}…</span>
-                      <span>{m.actualHours}h / {m.estimatedHours > 0 ? `${m.estimatedHours}h est.` : 'non estimé'}</span>
-                    </div>
-                    <Bar value={m.actualHours} max={m.estimatedHours || m.actualHours} color={pct > 90 ? 'bg-amber-400' : 'bg-cyan-500'} />
-                  </div>
-                );
-              })}
-              {data.workloadByMember.length > 4 && (
-                <p className="text-xs bf-text-muted">+{data.workloadByMember.length - 4} autres membres</p>
-              )}
-            </div>
-          )}
-          <p className="text-xs bf-text-muted pt-1 border-t">
-            Total : <span className="font-semibold">{totalActualHours}h</span> réalisées
-            {totalEstimatedHours > 0 && <> / <span className="font-semibold">{totalEstimatedHours}h</span> estimées</>}
-          </p>
-          <MiniChart
-            values={data.workloadByMember.slice(0, 5).map((member) => member.actualHours)}
-            colors={['bg-cyan-500', 'bg-sky-400', 'bg-violet-500', 'bg-amber-400']}
-          />
-        </KpiCard>
-
-        {/* 4. Incidents à traiter */}
-        <KpiCard label="Incidents de chantier à traiter" accent={data.openIncidents > 0 ? (data.criticalIncidents > 0 ? 'red' : 'amber') : 'green'}>
-          <div className="flex items-end gap-4">
-            <div>
-              <p className={`text-3xl font-black ${data.openIncidents > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{data.openIncidents}</p>
-              <p className="text-xs bf-text-muted">ouverts</p>
-            </div>
-            {data.criticalIncidents > 0 && (
-              <div>
-                <p className="text-3xl font-black text-red-600">{data.criticalIncidents}</p>
-                <p className="text-xs bf-text-muted">critiques</p>
-              </div>
-            )}
-            {data.openIncidents === 0 && (
-              <p className="text-sm text-emerald-600 font-semibold">✓ Tout traité</p>
-            )}
-          </div>
-          <MiniChart
-            values={[data.openIncidents, data.criticalIncidents, Math.max(data.openIncidents - data.criticalIncidents, 0)]}
-            colors={['bg-amber-400', 'bg-red-500', 'bg-emerald-500']}
-          />
-        </KpiCard>
-
-        {/* 5. Commandes en retard à réceptionner */}
-        <KpiCard label="Commandes en retard à réceptionner" accent={data.lateOrdersToPend > 0 ? 'red' : 'green'}>
-          <div className="flex items-end gap-4">
-            <div>
-              <p className={`text-3xl font-black ${data.lateOrdersToPend > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{data.lateOrdersToPend}</p>
-              <p className="text-xs bf-text-muted">commande{data.lateOrdersToPend !== 1 ? 's' : ''} en retard</p>
-            </div>
-            {data.lateOrdersToPend === 0 && (
-              <p className="text-sm text-emerald-600 font-semibold">✓ Aucun retard</p>
-            )}
-          </div>
-          <MiniChart
-            values={[data.lateOrdersToPend, Math.max(data.projects.length - data.lateOrdersToPend, 0), data.projects.length]}
-            colors={['bg-red-500', 'bg-emerald-500', 'bg-slate-400']}
-          />
-        </KpiCard>
-
-        {/* 6. Commandes livrées en retard */}
-        <KpiCard label="Commandes livrées en retard" accent={data.lateDeliveries > 0 ? 'amber' : 'green'}>
-          <div className="flex items-end gap-4">
-            <div>
-              <p className={`text-3xl font-black ${data.lateDeliveries > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{data.lateDeliveries}</p>
-              <p className="text-xs bf-text-muted">livraison{data.lateDeliveries !== 1 ? 's' : ''} hors délai</p>
-            </div>
-            {data.lateDeliveries === 0 && (
-              <p className="text-sm text-emerald-600 font-semibold">✓ Aucun retard</p>
-            )}
-          </div>
-          <MiniChart
-            values={[data.lateDeliveries, Math.max(data.projects.length - data.lateDeliveries, 0), data.projects.length]}
-            colors={['bg-amber-400', 'bg-emerald-500', 'bg-cyan-500']}
-          />
-        </KpiCard>
-
-      </div>
-
-      {/* Grille projets */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {data.projects.map((project) => (
-          <button
-            key={project.id}
-            onClick={() => handleOpenProject(project.id)}
-            className="bf-card-soft p-5 rounded-xl text-left hover:shadow-md transition-all w-full"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="font-bold bf-text-primary text-base">{project.name}</p>
-                <p className="text-xs bf-text-muted font-mono mt-0.5">{project.code}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs bf-text-muted">{STATUS_LABELS[project.status] ?? project.status}</span>
-                {project.plannedEndDate && (
-                  <span className="text-xs bf-text-muted">
-                    🗓 {new Date(project.plannedEndDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="mb-3">
-              <div className="flex justify-between text-xs bf-text-muted mb-1">
-                <span>Avancement</span>
-                <span className="font-semibold">{project.completionPct}%</span>
-              </div>
-              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-cyan-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(project.completionPct, 100)}%` }} />
-              </div>
-            </div>
-            <div className="mb-4">
-              <div className="flex justify-between text-xs bf-text-muted mb-1">
-                <span>Budget consommé</span>
-                <span className={`font-semibold ${project.budgetRate > 90 ? 'text-red-600' : project.budgetRate > 70 ? 'text-amber-600' : 'bf-text-muted'}`}>
-                  {project.budgetRate}%
+      <section className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
+        <div className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_45%,#0f172a_100%)] p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.35),transparent_55%)]" />
+          <div className="relative grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100">
+                  Mission control chantier
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                  {projectCount} projet{projectCount > 1 ? 's' : ''} pilotes
                 </span>
               </div>
-              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${project.budgetRate > 90 ? 'bg-red-500' : project.budgetRate > 70 ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                  style={{ width: `${Math.min(project.budgetRate, 100)}%` }}
-                />
+
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-slate-300">Vision portefeuille</p>
+                <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-4xl">
+                  {data.criticalIncidents > 0 || data.delayedProjects > 0
+                    ? 'Le chantier demande une lecture plus operationnelle, pas une simple grille de KPIs.'
+                    : 'Le portefeuille est stable, avec une marge et un planning sous controle.'}
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                  Avancement moyen {averageCompletion}% · budget consomme a {budgetPct}% · {healthyProjects} projet{healthyProjects > 1 ? 's' : ''} en maitrise nette.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Budget vendu</p>
+                  <p className="mt-2 text-2xl font-black">{formatCurrencyCompact(data.totalBudgetSold)}</p>
+                  <p className="mt-1 text-xs text-slate-300">Encours chantier consolide</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Budget consomme</p>
+                  <p className={`mt-2 text-2xl font-black ${budgetPct >= 100 ? 'text-red-300' : budgetPct >= 80 ? 'text-amber-300' : 'text-emerald-300'}`}>{formatCurrencyCompact(data.totalBudgetSpent)}</p>
+                  <p className="mt-1 text-xs text-slate-300">Taux d engagement {budgetPct}%</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Marge estimee</p>
+                  <p className={`mt-2 text-2xl font-black ${data.estimatedMargin >= 0 ? 'text-cyan-200' : 'text-red-300'}`}>{formatCurrencyCompact(data.estimatedMargin)}</p>
+                  <p className="mt-1 text-xs text-slate-300">Lecture brute vendu vs consomme</p>
+                </div>
               </div>
             </div>
-            <div className="flex gap-4 text-xs bf-text-muted border-t pt-3">
-              <span>{project.incidentCount} incident{project.incidentCount !== 1 ? 's' : ''}</span>
-              {project.openCriticalIncidents > 0 && (
-                <span className="text-red-600 font-semibold">{project.openCriticalIncidents} critique{project.openCriticalIncidents !== 1 ? 's' : ''}</span>
-              )}
-              <span className="ml-auto text-cyan-600 font-medium">Ouvrir →</span>
+
+            <div className="rounded-[28px] border border-white/10 bg-white/10 p-5 backdrop-blur-md">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-100">Projet prioritaire</p>
+                  <h3 className="mt-2 text-xl font-black text-white">{leadProject.name}</h3>
+                  <p className="mt-1 text-sm text-slate-300">{leadProject.code} · {STATUS_LABELS[leadProject.status] ?? leadProject.status}</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-black ${getProjectTone(leadProject).badge}`}>
+                  {getProjectTone(leadProject).label}
+                </span>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                    <span>Avancement terrain</span>
+                    <span className="font-bold text-white">{leadProject.completionPct}%</span>
+                  </div>
+                  <Bar value={leadProject.completionPct} max={100} color="bg-cyan-400" />
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                    <span>Budget engage</span>
+                    <span className={`font-bold ${leadProject.budgetRate >= 90 ? 'text-red-300' : leadProject.budgetRate >= 70 ? 'text-amber-300' : 'text-emerald-300'}`}>{leadProject.budgetRate}%</span>
+                  </div>
+                  <Bar value={leadProject.budgetRate} max={100} color={leadProject.budgetRate >= 90 ? 'bg-red-400' : leadProject.budgetRate >= 70 ? 'bg-amber-300' : 'bg-emerald-400'} />
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-3">
+                  <p className="text-xs text-slate-400">Incidents ouverts</p>
+                  <p className="mt-1 text-lg font-black text-white">{leadProject.incidentCount}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-3">
+                  <p className="text-xs text-slate-400">Critiques</p>
+                  <p className={`mt-1 text-lg font-black ${leadProject.openCriticalIncidents > 0 ? 'text-red-300' : 'text-emerald-300'}`}>{leadProject.openCriticalIncidents}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-3 sm:col-span-2">
+                  <p className="text-xs text-slate-400">Jalon vise</p>
+                  <p className="mt-1 text-sm font-bold text-white">{formatDateShort(leadProject.plannedEndDate)}</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenProject(leadProject.id)}
+                className="mt-5 w-full rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:bg-cyan-50"
+              >
+                Ouvrir le projet prioritaire
+              </button>
             </div>
-          </button>
-        ))}
-      </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+          <MetricTile
+            label="Pilotage budget"
+            value={`${budgetPct}%`}
+            hint={`${formatCurrencyCompact(data.totalBudgetSpent)} consommes sur ${formatCurrencyCompact(data.totalBudgetSold)}`}
+            tone={budgetAccent === 'red' ? 'red' : budgetAccent === 'amber' ? 'amber' : 'green'}
+            trend={[data.totalBudgetSold, data.totalBudgetSpent, Math.max(data.totalBudgetSold - data.totalBudgetSpent, 0)]}
+          />
+          <MetricTile
+            label="Incidents terrain"
+            value={`${data.openIncidents}`}
+            hint={data.criticalIncidents > 0 ? `${data.criticalIncidents} critique(s) a traiter` : 'Aucune alerte critique'}
+            tone={data.criticalIncidents > 0 ? 'red' : data.openIncidents > 0 ? 'amber' : 'green'}
+            trend={[data.openIncidents, data.criticalIncidents, Math.max(data.openIncidents - data.criticalIncidents, 0)]}
+          />
+          <MetricTile
+            label="Approvisionnements"
+            value={`${data.lateOrdersToPend + data.lateDeliveries}`}
+            hint={`${data.lateOrdersToPend} commande(s) en retard, ${data.lateDeliveries} livraison(s) hors delai`}
+            tone={data.lateOrdersToPend > 0 ? 'red' : data.lateDeliveries > 0 ? 'amber' : 'green'}
+            trend={[data.lateOrdersToPend, data.lateDeliveries, projectCount]}
+          />
+          <MetricTile
+            label="Charge equipe"
+            value={workloadPct !== null ? `${workloadPct}%` : `${totalActualHours}h`}
+            hint={totalEstimatedHours > 0 ? `${totalActualHours}h realisees pour ${totalEstimatedHours}h estimees` : 'Temps saisi sans base estimee'}
+            tone={workloadPct !== null && workloadPct > 90 ? 'amber' : 'blue'}
+            trend={data.workloadByMember.slice(0, 3).map((member) => member.actualHours).concat(totalActualHours).slice(0, 4)}
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="bf-card-soft rounded-[28px] border border-slate-200 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Signal operationnel</p>
+              <h3 className="mt-2 text-xl font-black bf-text-primary">Lecture directe du terrain</h3>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Temps reel consolide</span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {signalFeed.map((signal, index) => {
+              const tone = signal.tone === 'red'
+                ? 'border-red-200 bg-red-50/80'
+                : signal.tone === 'amber'
+                  ? 'border-amber-200 bg-amber-50/80'
+                  : signal.tone === 'green'
+                    ? 'border-emerald-200 bg-emerald-50/70'
+                    : 'border-cyan-200 bg-cyan-50/70';
+              const dot = signal.tone === 'red'
+                ? 'bg-red-500'
+                : signal.tone === 'amber'
+                  ? 'bg-amber-400'
+                  : signal.tone === 'green'
+                    ? 'bg-emerald-500'
+                    : 'bg-cyan-500';
+
+              return (
+                <div key={signal.id} className={`rounded-[22px] border p-4 ${tone}`}>
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <span className={`mt-1 h-3 w-3 rounded-full ${dot}`} />
+                      {index < signalFeed.length - 1 ? <span className="mt-2 h-full w-px bg-slate-300/80" /> : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-black bf-text-primary">{signal.title}</p>
+                      <p className="mt-1 text-sm text-slate-600">{signal.detail}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bf-card-soft rounded-[28px] border border-slate-200 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Priorites portefeuille</p>
+              <h3 className="mt-2 text-xl font-black bf-text-primary">Projets qui demandent une action</h3>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Top {Math.min(topPriorityProjects.length, 4)}</span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {topPriorityProjects.slice(0, 4).map((project) => {
+              const tone = getProjectTone(project);
+              return (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => handleOpenProject(project.id)}
+                  className={`w-full rounded-[24px] border p-4 text-left transition hover:-translate-y-0.5 ${tone.shell}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-black bf-text-primary">{project.name}</p>
+                      <p className="mt-1 text-xs font-mono bf-text-muted">{project.code} · {formatDateShort(project.plannedEndDate)}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-black ${tone.badge}`}>{tone.label}</span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs bf-text-muted">
+                        <span>Avancement</span>
+                        <span className="font-semibold bf-text-primary">{project.completionPct}%</span>
+                      </div>
+                      <Bar value={project.completionPct} max={100} color="bg-cyan-500" />
+                    </div>
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs bf-text-muted">
+                        <span>Budget engage</span>
+                        <span className={`font-semibold ${project.budgetRate > 90 ? 'text-red-600' : project.budgetRate > 70 ? 'text-amber-600' : 'text-emerald-600'}`}>{project.budgetRate}%</span>
+                      </div>
+                      <Bar value={project.budgetRate} max={100} color={tone.accent} />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                    <span>{STATUS_LABELS[project.status] ?? project.status}</span>
+                    <span>{project.incidentCount} incident{project.incidentCount > 1 ? 's' : ''}</span>
+                    {project.openCriticalIncidents > 0 ? <span className="font-bold text-red-600">{project.openCriticalIncidents} critique(s)</span> : null}
+                    <span className="ml-auto font-semibold text-cyan-700">Ouvrir le pilotage</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Carte portefeuille</p>
+            <h3 className="mt-2 text-xl font-black bf-text-primary">Tous les chantiers, avec une lecture de risque plus nette</h3>
+          </div>
+          <p className="text-sm text-slate-500">Cliquez sur un chantier pour basculer dans l execution.</p>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {data.projects.map((project) => {
+            const tone = getProjectTone(project);
+            const phase = getProjectPhase(project);
+            const actionLabel = getProjectActionLabel(project);
+            const milestoneStates = [
+              { label: 'Etudes', state: getMilestoneState(project.completionPct, 15) },
+              { label: 'Execution', state: getMilestoneState(project.completionPct, 55) },
+              { label: 'Reception', state: getMilestoneState(project.completionPct, 90) },
+            ];
+            return (
+              <button
+                key={project.id}
+                type="button"
+                onClick={() => handleOpenProject(project.id)}
+                className={`w-full rounded-[28px] border p-5 text-left transition hover:-translate-y-0.5 ${tone.shell}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-black bf-text-primary">{project.name}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="rounded-full bg-slate-900 px-2.5 py-1 font-black uppercase tracking-[0.16em] text-white">{phase}</span>
+                      <span className="font-mono bf-text-muted">{project.code}</span>
+                      <span className="text-slate-500">Jalon cible {formatDateShort(project.plannedEndDate)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-black ${tone.badge}`}>{tone.label}</span>
+                    <p className="mt-2 text-xs text-slate-500">{STATUS_LABELS[project.status] ?? project.status}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[22px] border border-slate-200/80 bg-white/70 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Action recommandee</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{actionLabel}</p>
+                    </div>
+                    <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">Pilotage chantier</span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {milestoneStates.map((milestone) => {
+                      const toneClass = milestone.state === 'done'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : milestone.state === 'active'
+                          ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-500';
+                      return (
+                        <div key={milestone.label} className={`rounded-2xl border px-3 py-3 ${toneClass}`}>
+                          <p className="text-[11px] font-black uppercase tracking-[0.18em]">{milestone.label}</p>
+                          <p className="mt-2 text-xs font-semibold">
+                            {milestone.state === 'done' ? 'Valide' : milestone.state === 'active' ? 'En cours' : 'A venir'}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl bg-white/70 p-4">
+                    <div className="mb-2 flex items-center justify-between text-xs bf-text-muted">
+                      <span>Avancement chantier</span>
+                      <span className="font-bold bf-text-primary">{project.completionPct}%</span>
+                    </div>
+                    <Bar value={project.completionPct} max={100} color="bg-cyan-500" />
+                    <p className="mt-3 text-xs text-slate-500">Jalon vise: {formatDateShort(project.plannedEndDate)}</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/70 p-4">
+                    <div className="mb-2 flex items-center justify-between text-xs bf-text-muted">
+                      <span>Budget consomme</span>
+                      <span className={`font-bold ${project.budgetRate > 90 ? 'text-red-600' : project.budgetRate > 70 ? 'text-amber-600' : 'text-emerald-600'}`}>{project.budgetRate}%</span>
+                    </div>
+                    <Bar value={project.budgetRate} max={100} color={tone.accent} />
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1">{project.incidentCount} incident{project.incidentCount > 1 ? 's' : ''}</span>
+                      {project.openCriticalIncidents > 0 ? <span className="rounded-full bg-red-100 px-2.5 py-1 font-bold text-red-600">{project.openCriticalIncidents} critique(s)</span> : <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-600">Aucun critique</span>}
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1">{project.delayedLabel === 'ok' ? 'Cadence OK' : project.delayedLabel === 'derive' ? 'Derive a contenir' : 'Recadrage urgent'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-slate-200/80 pt-4 text-sm">
+                  <span className="text-slate-500">Pilotage terrain, jalons, incidents et budget</span>
+                  <span className="font-black text-slate-900">Ouvrir</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
