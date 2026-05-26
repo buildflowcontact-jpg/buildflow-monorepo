@@ -227,8 +227,8 @@ function App() {
             }}
           />
 
-          <main className="min-w-0 flex-1 space-y-4 md:h-full md:overflow-y-auto md:px-6 md:py-5">
-            <div className="hidden md:flex items-center justify-between gap-4 border-b border-slate-200/90 bg-white/95 px-1 pb-4 pt-1">
+          <div className="min-w-0 flex-1 md:flex md:h-full md:flex-col">
+            <header className="hidden md:flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 pb-3 pt-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
                   <span className="hover:text-slate-600">Projets</span>
@@ -267,7 +267,9 @@ function App() {
                   <ChevronDown size={14} className="text-slate-500" />
                 </button>
               </div>
-            </div>
+            </header>
+
+          <main className="min-w-0 flex-1 space-y-4 md:overflow-y-auto md:px-6 md:py-5">
 
             {isProjectsLoading ? (
               <SectionLoader label="Chargement des projets..." />
@@ -576,6 +578,7 @@ function App() {
             </AnimatePresence>
             ) : null}
           </main>
+          </div>
           </div>
         </div>
 

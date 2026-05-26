@@ -1,31 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CalendarCheck2, CheckCircle2, Clock3, Info, PackageX, Sun, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, CalendarCheck2, Clock3, Droplets, Info, PackageX, Sun, ThermometerSun, Users, Wallet, Wind } from 'lucide-react';
 import { usePortfolioDashboard } from '@/modules/kpi/hooks/usePortfolioDashboard';
+import { useAuth } from '@/modules/chantier/hooks/useAuth';
 import { useProjectStore } from '@/store/projectStore';
+import { formatCurrency, normalizeCurrency, resolveUserCurrency } from '@/utils/currency';
+import { formatTemperature, resolveUserTemperatureUnit } from '@/utils/temperature';
 import { SkeletonCard, SkeletonKpiGrid } from '@/components/ui/Skeleton';
-
-type DashboardTab = 'overview' | 'progress' | 'planning' | 'team' | 'documents' | 'incidents';
-
-const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
-  { id: 'overview', label: "Vue d'ensemble" },
-  { id: 'progress', label: 'Avancement' },
-  { id: 'planning', label: 'Planning' },
-  { id: 'team', label: 'Equipe' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'incidents', label: 'Incidents' },
-];
 
 function RingProgress({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
     <div
-      className="relative grid h-32 w-32 place-items-center rounded-full"
+      className="relative grid h-40 w-40 place-items-center rounded-full"
       style={{
         background: `conic-gradient(#2563eb ${clamped * 3.6}deg, #dbe5f5 ${clamped * 3.6}deg)`,
       }}
     >
-      <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center">
+      <div className="grid h-[152px] w-[152px] place-items-center rounded-full bg-white text-center">
         <p className="text-4xl font-black text-slate-900">{clamped}%</p>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Avancement</p>
       </div>
@@ -51,8 +43,8 @@ function StatusDot({ tone }: { tone: 'done' | 'active' | 'upcoming' }) {
   return <span className={`h-2.5 w-2.5 rounded-full ${classes}`} />;
 }
 
-function kEuro(value: number) {
-  return `${(value / 1000).toFixed(0)} kEUR`;
+function kCurrency(value: number, currency: ReturnType<typeof normalizeCurrency>) {
+  return formatCurrency(value / 1000, currency, { notation: 'compact' });
 }
 
 function dateShort(value: string | null) {
@@ -61,10 +53,10 @@ function dateShort(value: string | null) {
 }
 
 export function GlobalDashboard() {
+  const { user } = useAuth();
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
   const { data, isLoading } = usePortfolioDashboard();
   const navigate = useNavigate();
-  const { setCurrentProjectId } = useProjectStore();
-  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
 
   const sortedProjects = useMemo(() => {
     if (!data) return [];
@@ -76,6 +68,9 @@ export function GlobalDashboard() {
   }, [data]);
 
   const leadProject = sortedProjects[0] ?? null;
+  const userMetadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const effectiveCurrency = resolveUserCurrency(userMetadata, currentProjectId ?? leadProject?.id ?? null);
+  const effectiveTemperatureUnit = resolveUserTemperatureUnit(userMetadata, currentProjectId ?? leadProject?.id ?? null);
 
   if (isLoading) {
     return (
@@ -150,45 +145,42 @@ export function GlobalDashboard() {
     { day: 'Ven.', max: 17, min: 8 },
   ];
 
+  const displayedTemperature = formatTemperature(18, effectiveTemperatureUnit);
+  const plannedProgress = [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 90, 100];
+  const actualBase = [8, 12, 22, 25, 32, 35, 44, 51, 58, 64, 72, 84];
+  const scale = completion > 0 ? completion / actualBase[actualBase.length - 1] : 0;
+  const actualProgress = actualBase.map((value, index) => {
+    if (index === actualBase.length - 1) {
+      return Math.max(0, Math.min(100, completion));
+    }
+    return Math.max(0, Math.min(100, Math.round(value * scale)));
+  });
+
+  const chartWidth = 640;
+  const chartHeight = 220;
+  const chartPaddingX = 16;
+  const chartPaddingTop = 14;
+  const chartPaddingBottom = 28;
+  const chartPlotHeight = chartHeight - chartPaddingTop - chartPaddingBottom;
+  const toX = (index: number) => chartPaddingX + (index * (chartWidth - chartPaddingX * 2)) / (plannedProgress.length - 1);
+  const toY = (value: number) => chartPaddingTop + ((100 - value) / 100) * chartPlotHeight;
+  const plannedPolyline = plannedProgress.map((value, index) => `${toX(index)},${toY(value)}`).join(' ');
+
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div>
             <h2 className="text-4xl font-black tracking-tight text-slate-900">{leadProject?.name ?? 'Projet'}</h2>
             <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">En cours</span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (!leadProject) return;
-              setCurrentProjectId(leadProject.id);
-              navigate('/executer');
-            }}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Ouvrir le projet
-          </button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-1 border-b border-slate-200 pb-1">
-          {DASHBOARD_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${activeTab === tab.id ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
         </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h3 className="text-lg font-black text-slate-900">Avancement global du projet</h3>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[0.8fr_1fr_1fr]">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
             <div className="grid place-items-center">
               <RingProgress value={completion} />
             </div>
@@ -197,12 +189,12 @@ export function GlobalDashboard() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-slate-500">Budget consomme</p>
-                  <p className="text-3xl font-black text-slate-900">{kEuro(data.totalBudgetSpent)}</p>
-                  <p className="text-xs text-slate-500">sur {kEuro(data.totalBudgetSold)}</p>
+                  <p className="text-3xl font-black text-slate-900">{kCurrency(data.totalBudgetSpent, effectiveCurrency)}</p>
+                  <p className="text-xs text-slate-500">sur {kCurrency(data.totalBudgetSold, effectiveCurrency)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Budget restant</p>
-                  <p className="text-3xl font-black text-emerald-600">{kEuro(budgetRemaining)}</p>
+                  <p className="text-3xl font-black text-emerald-600">{kCurrency(budgetRemaining, effectiveCurrency)}</p>
                   <p className="text-xs text-slate-500">{budgetPct}% deja engage</p>
                 </div>
               </div>
@@ -289,11 +281,11 @@ export function GlobalDashboard() {
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             <div>
               <p className="text-xs text-slate-500">Consomme</p>
-              <p className="font-black text-slate-900">{kEuro(data.totalBudgetSpent)}</p>
+              <p className="font-black text-slate-900">{kCurrency(data.totalBudgetSpent, effectiveCurrency)}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Restant</p>
-              <p className="font-black text-emerald-600">{kEuro(budgetRemaining)}</p>
+              <p className="font-black text-emerald-600">{kCurrency(budgetRemaining, effectiveCurrency)}</p>
             </div>
           </div>
           <div className="mt-3">
@@ -365,14 +357,81 @@ export function GlobalDashboard() {
             <h3 className="text-base font-black text-slate-900">Avancement dans le temps</h3>
             <span className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600">12 derniers mois</span>
           </div>
-          <div className="mt-5 h-44">
-            <div className="grid h-full grid-cols-12 items-end gap-2">
-              {[8, 12, 22, 25, 32, 35, 44, 51, 58, 64, 72, completion].map((value, index) => (
-                <div key={`trend-${index}`} className="flex h-full items-end">
-                  <div className="w-full rounded-t-md bg-blue-500/85" style={{ height: `${Math.max(8, Math.min(100, value))}%` }} />
-                </div>
-              ))}
+          <div className="mt-4 flex items-center gap-4 text-xs">
+            <div className="inline-flex items-center gap-2 text-slate-500">
+              <span className="h-2 w-6 rounded-full bg-slate-400" />
+              <span>Prevu</span>
             </div>
+            <div className="inline-flex items-center gap-2 text-slate-500">
+              <span className="h-2 w-6 rounded-full bg-emerald-500" />
+              <span>Reel en adequation</span>
+            </div>
+            <div className="inline-flex items-center gap-2 text-slate-500">
+              <span className="h-2 w-6 rounded-full bg-red-500" />
+              <span>Reel en retard</span>
+            </div>
+          </div>
+          <div className="mt-4 h-56 w-full">
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full w-full">
+              {[0, 25, 50, 75, 100].map((tick) => (
+                <line
+                  key={`grid-${tick}`}
+                  x1={chartPaddingX}
+                  x2={chartWidth - chartPaddingX}
+                  y1={toY(tick)}
+                  y2={toY(tick)}
+                  stroke="#e5e7eb"
+                  strokeDasharray="3 6"
+                  strokeWidth="1"
+                />
+              ))}
+
+              <polyline
+                points={plannedPolyline}
+                fill="none"
+                stroke="#94a3b8"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {actualProgress.slice(0, -1).map((value, index) => {
+                const nextValue = actualProgress[index + 1];
+                const plannedValue = plannedProgress[index];
+                const nextPlannedValue = plannedProgress[index + 1];
+                const isOnTrack = value >= plannedValue && nextValue >= nextPlannedValue;
+                const stroke = isOnTrack ? '#10b981' : '#ef4444';
+
+                return (
+                  <line
+                    key={`actual-segment-${index}`}
+                    x1={toX(index)}
+                    y1={toY(value)}
+                    x2={toX(index + 1)}
+                    y2={toY(nextValue)}
+                    stroke={stroke}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                );
+              })}
+
+              {actualProgress.map((value, index) => {
+                const plannedValue = plannedProgress[index];
+                const dotColor = value >= plannedValue ? '#10b981' : '#ef4444';
+                return (
+                  <circle
+                    key={`actual-dot-${index}`}
+                    cx={toX(index)}
+                    cy={toY(value)}
+                    r="3.5"
+                    fill={dotColor}
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                  />
+                );
+              })}
+            </svg>
           </div>
         </article>
 
@@ -394,42 +453,64 @@ export function GlobalDashboard() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h3 className="text-base font-black text-slate-900">Meteo sur site</h3>
-          <div className="mt-4 flex items-center gap-3">
-            <Sun size={30} className="text-amber-500" />
+        <article className="relative overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-sky-300/30 blur-2xl" />
+          <div className="pointer-events-none absolute -left-10 bottom-0 h-24 w-24 rounded-full bg-cyan-200/40 blur-2xl" />
+
+          <div className="relative flex items-start justify-between gap-3">
             <div>
-              <p className="text-4xl font-black text-slate-900">18 deg</p>
-              <p className="text-sm font-semibold text-slate-600">Ensoleille</p>
+              <h3 className="text-base font-black text-slate-900">Meteo sur site</h3>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-sky-700/80">Unite active: °{effectiveTemperatureUnit}</p>
             </div>
+            <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1 text-[11px] font-bold text-sky-700">Conditions stables</span>
           </div>
-          <div className="mt-4 space-y-2 text-xs text-slate-600">
-            <div className="flex items-center justify-between">
-              <span>Vent</span>
-              <span>15 km/h</span>
+
+          <div className="relative mt-4 flex items-center gap-3 rounded-2xl border border-white/60 bg-white/70 p-3 backdrop-blur-sm">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-amber-100 text-amber-600">
+              <Sun size={22} />
             </div>
-            <div className="flex items-center justify-between">
-              <span>Humidite</span>
-              <span>45%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Precipitations</span>
-              <span>0%</span>
+            <div>
+              <p className="text-4xl font-black leading-none text-slate-900">{displayedTemperature}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-600">Ensoleille</p>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-4 gap-2 text-center">
+          <div className="relative mt-4 grid grid-cols-3 gap-2.5 text-xs">
+            <div className="rounded-xl border border-white/60 bg-white/75 px-2 py-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <Wind size={12} />
+                <span>Vent</span>
+              </div>
+              <p className="mt-1 text-sm font-black text-slate-800">15 km/h</p>
+            </div>
+            <div className="rounded-xl border border-white/60 bg-white/75 px-2 py-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <Droplets size={12} />
+                <span>Humidite</span>
+              </div>
+              <p className="mt-1 text-sm font-black text-slate-800">45%</p>
+            </div>
+            <div className="rounded-xl border border-white/60 bg-white/75 px-2 py-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <ThermometerSun size={12} />
+                <span>Ressenti</span>
+              </div>
+              <p className="mt-1 text-sm font-black text-slate-800">{formatTemperature(19, effectiveTemperatureUnit)}</p>
+            </div>
+          </div>
+
+          <div className="relative mt-5 grid grid-cols-4 gap-2 text-center">
             {forecast.map((day) => (
-              <div key={day.day} className="rounded-lg bg-slate-50 px-1 py-2">
+              <div key={day.day} className="rounded-xl border border-white/60 bg-white/80 px-1 py-2 shadow-[0_4px_14px_rgba(125,211,252,0.16)]">
                 <p className="text-[10px] font-bold text-slate-500">{day.day}</p>
-                <CalendarCheck2 size={14} className="mx-auto my-1 text-blue-500" />
-                <p className="text-[10px] text-slate-600">{day.max} deg</p>
-                <p className="text-[10px] text-slate-400">{day.min} deg</p>
+                <CalendarCheck2 size={14} className="mx-auto my-1 text-sky-500" />
+                <p className="text-[10px] font-semibold text-slate-700">{formatTemperature(day.max, effectiveTemperatureUnit)}</p>
+                <p className="text-[10px] text-slate-400">{formatTemperature(day.min, effectiveTemperatureUnit)}</p>
               </div>
             ))}
           </div>
 
-          <button type="button" className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+          <button type="button" className="relative mt-4 inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition-colors hover:bg-white">
             <Clock3 size={12} />
             Voir la meteo detaillee
           </button>

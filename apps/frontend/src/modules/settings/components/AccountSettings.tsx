@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { signOut, useAuth } from '@/modules/chantier/hooks/useAuth';
+import { useProjects } from '@/hooks/useProjects';
+import { useProjectStore } from '@/store/projectStore';
+import { CURRENCY_OPTIONS, SupportedCurrency, normalizeCurrency } from '@/utils/currency';
+import {
+  normalizeTemperatureUnit,
+  TEMPERATURE_UNIT_OPTIONS,
+  TemperatureUnit,
+} from '@/utils/temperature';
 import { UITheme, uiThemeLabels, useUIStore } from '../../../store/uiStore';
 
 const THEMES: Array<{ id: UITheme; description: string }> = [
@@ -39,13 +47,14 @@ const DATE_FORMAT_OPTIONS = [
   { value: 'mm/dd/yyyy', label: 'MM/JJ/AAAA' },
 ];
 
-type AccountTab = 'profile' | 'security' | 'appearance' | 'preferences';
+type AccountTab = 'profile' | 'security' | 'appearance' | 'preferences' | 'project';
 
 const ACCOUNT_TABS: Array<{ id: AccountTab; label: string }> = [
   { id: 'profile', label: 'Profil' },
   { id: 'security', label: 'Securite' },
   { id: 'appearance', label: 'Apparence' },
   { id: 'preferences', label: 'Preferences' },
+  { id: 'project', label: 'Projet' },
 ];
 
 function getInitials(firstName: string, lastName: string, fallback: string) {
@@ -61,6 +70,8 @@ function getInitials(firstName: string, lastName: string, fallback: string) {
 
 export function AccountSettings() {
   const { user } = useAuth();
+  const { data: projects = [] } = useProjects();
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
   const uiTheme = useUIStore((state) => state.uiTheme);
   const setUITheme = useUIStore((state) => state.setUITheme);
   const isThemeSyncing = useUIStore((state) => state.isThemeSyncing);
@@ -80,6 +91,13 @@ export function AccountSettings() {
   const [language, setLanguage] = useState('fr');
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris');
   const [dateFormat, setDateFormat] = useState('dd/mm/yyyy');
+  const [defaultCurrency, setDefaultCurrency] = useState<SupportedCurrency>('EUR');
+  const [projectCurrencyOverrides, setProjectCurrencyOverrides] = useState<Record<string, SupportedCurrency>>({});
+  const [selectedProjectForCurrency, setSelectedProjectForCurrency] = useState<string>('');
+  const [projectCurrency, setProjectCurrency] = useState<SupportedCurrency>('EUR');
+  const [defaultTemperatureUnit, setDefaultTemperatureUnit] = useState<TemperatureUnit>('C');
+  const [projectTemperatureUnitOverrides, setProjectTemperatureUnitOverrides] = useState<Record<string, TemperatureUnit>>({});
+  const [projectTemperatureUnit, setProjectTemperatureUnit] = useState<TemperatureUnit>('C');
   const [notifyIncidentEmail, setNotifyIncidentEmail] = useState(true);
   const [notifyIncidentPush, setNotifyIncidentPush] = useState(true);
   const [notifyPlanningEmail, setNotifyPlanningEmail] = useState(false);
@@ -89,6 +107,9 @@ export function AccountSettings() {
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
   const [preferenceError, setPreferenceError] = useState<string | null>(null);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [projectCurrencyMessage, setProjectCurrencyMessage] = useState<string | null>(null);
+  const [projectCurrencyError, setProjectCurrencyError] = useState<string | null>(null);
+  const [isSavingProjectCurrency, setIsSavingProjectCurrency] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
@@ -115,6 +136,26 @@ export function AccountSettings() {
     setLanguage(typeof userMetadata.language === 'string' ? userMetadata.language : 'fr');
     setTimezone(typeof userMetadata.timezone === 'string' ? userMetadata.timezone : (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'));
     setDateFormat(typeof userMetadata.date_format === 'string' ? userMetadata.date_format : 'dd/mm/yyyy');
+    const accountCurrency = normalizeCurrency(userMetadata.default_currency, 'EUR');
+    setDefaultCurrency(accountCurrency);
+    const overridesRaw = userMetadata.project_currency_overrides;
+    const normalizedOverrides: Record<string, SupportedCurrency> = {};
+    if (overridesRaw && typeof overridesRaw === 'object' && !Array.isArray(overridesRaw)) {
+      for (const [projectId, currency] of Object.entries(overridesRaw as Record<string, unknown>)) {
+        normalizedOverrides[projectId] = normalizeCurrency(currency, accountCurrency);
+      }
+    }
+    setProjectCurrencyOverrides(normalizedOverrides);
+    const accountTemperatureUnit = normalizeTemperatureUnit(userMetadata.default_temperature_unit, 'C');
+    setDefaultTemperatureUnit(accountTemperatureUnit);
+    const temperatureOverridesRaw = userMetadata.project_temperature_unit_overrides;
+    const normalizedTemperatureOverrides: Record<string, TemperatureUnit> = {};
+    if (temperatureOverridesRaw && typeof temperatureOverridesRaw === 'object' && !Array.isArray(temperatureOverridesRaw)) {
+      for (const [projectId, unit] of Object.entries(temperatureOverridesRaw as Record<string, unknown>)) {
+        normalizedTemperatureOverrides[projectId] = normalizeTemperatureUnit(unit, accountTemperatureUnit);
+      }
+    }
+    setProjectTemperatureUnitOverrides(normalizedTemperatureOverrides);
     setNotifyIncidentEmail(Boolean(userMetadata.notify_incident_email ?? true));
     setNotifyIncidentPush(Boolean(userMetadata.notify_incident_push ?? true));
     setNotifyPlanningEmail(Boolean(userMetadata.notify_planning_email ?? false));
@@ -122,6 +163,34 @@ export function AccountSettings() {
     setNotifyApproEmail(Boolean(userMetadata.notify_appro_email ?? true));
     setNotifyApproPush(Boolean(userMetadata.notify_appro_push ?? false));
   }, [userMetadata]);
+
+  useEffect(() => {
+    const fallbackProject = currentProjectId ?? projects[0]?.id ?? '';
+    if (!fallbackProject) {
+      setSelectedProjectForCurrency('');
+      setProjectCurrency(defaultCurrency);
+      return;
+    }
+
+    setSelectedProjectForCurrency((prev) => prev || fallbackProject);
+  }, [currentProjectId, projects, defaultCurrency]);
+
+  useEffect(() => {
+    if (!selectedProjectForCurrency) {
+      setProjectCurrency(defaultCurrency);
+      setProjectTemperatureUnit(defaultTemperatureUnit);
+      return;
+    }
+
+    setProjectCurrency(projectCurrencyOverrides[selectedProjectForCurrency] ?? defaultCurrency);
+    setProjectTemperatureUnit(projectTemperatureUnitOverrides[selectedProjectForCurrency] ?? defaultTemperatureUnit);
+  }, [
+    selectedProjectForCurrency,
+    projectCurrencyOverrides,
+    defaultCurrency,
+    projectTemperatureUnitOverrides,
+    defaultTemperatureUnit,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -223,6 +292,10 @@ export function AccountSettings() {
         language,
         timezone,
         date_format: dateFormat,
+        default_currency: defaultCurrency,
+        project_currency_overrides: projectCurrencyOverrides,
+        default_temperature_unit: defaultTemperatureUnit,
+        project_temperature_unit_overrides: projectTemperatureUnitOverrides,
         notify_incident_email: notifyIncidentEmail,
         notify_incident_push: notifyIncidentPush,
         notify_planning_email: notifyPlanningEmail,
@@ -239,6 +312,42 @@ export function AccountSettings() {
     }
 
     setIsSavingPreferences(false);
+  };
+
+  const handleProjectCurrencySave = async () => {
+    if (!user || !selectedProjectForCurrency) return;
+    setIsSavingProjectCurrency(true);
+    setProjectCurrencyMessage(null);
+    setProjectCurrencyError(null);
+
+    const nextOverrides: Record<string, SupportedCurrency> = {
+      ...projectCurrencyOverrides,
+      [selectedProjectForCurrency]: projectCurrency,
+    };
+    const nextTemperatureOverrides: Record<string, TemperatureUnit> = {
+      ...projectTemperatureUnitOverrides,
+      [selectedProjectForCurrency]: projectTemperatureUnit,
+    };
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        ...userMetadata,
+        default_currency: defaultCurrency,
+        project_currency_overrides: nextOverrides,
+        default_temperature_unit: defaultTemperatureUnit,
+        project_temperature_unit_overrides: nextTemperatureOverrides,
+      },
+    });
+
+    if (error) {
+      setProjectCurrencyError('Impossible de sauvegarder la devise du projet pour le moment.');
+    } else {
+      setProjectCurrencyOverrides(nextOverrides);
+      setProjectTemperatureUnitOverrides(nextTemperatureOverrides);
+      setProjectCurrencyMessage('Devise du projet enregistree.');
+    }
+
+    setIsSavingProjectCurrency(false);
   };
 
   const handlePasswordSave = async () => {
@@ -615,6 +724,22 @@ export function AccountSettings() {
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Devise par defaut (compte)
+                    <select className="bf-select w-full rounded-xl px-3 py-2" value={defaultCurrency} onChange={(event) => setDefaultCurrency(normalizeCurrency(event.target.value, 'EUR'))}>
+                      {CURRENCY_OPTIONS.map((option) => (
+                        <option key={option.code} value={option.code}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Unite de temperature par defaut (compte)
+                    <select className="bf-select w-full rounded-xl px-3 py-2" value={defaultTemperatureUnit} onChange={(event) => setDefaultTemperatureUnit(normalizeTemperatureUnit(event.target.value, 'C'))}>
+                      {TEMPERATURE_UNIT_OPTIONS.map((option) => (
+                        <option key={option.code} value={option.code}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
                     Signature automatique
                     <textarea className="bf-textarea w-full rounded-xl px-3 py-2" rows={4} value={signature} onChange={(event) => setSignature(event.target.value)} placeholder="Ex: Valide par Jean Dupont, conducteur de travaux" />
                   </label>
@@ -675,6 +800,80 @@ export function AccountSettings() {
                       {item}
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === 'project' ? (
+            <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+              <div className="surface-panel p-5 md:p-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-black bf-text-primary">Parametres du projet</h3>
+                  <p className="mt-1 text-sm bf-text-muted">La devise et l unite de temperature du projet surchargent les valeurs par defaut de votre compte.</p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Projet cible
+                    <select
+                      className="bf-select w-full rounded-xl px-3 py-2"
+                      value={selectedProjectForCurrency}
+                      onChange={(event) => setSelectedProjectForCurrency(event.target.value)}
+                    >
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>{project.name}{project.code ? ` (${project.code})` : ''}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Devise du projet
+                    <select className="bf-select w-full rounded-xl px-3 py-2" value={projectCurrency} onChange={(event) => setProjectCurrency(normalizeCurrency(event.target.value, defaultCurrency))}>
+                      {CURRENCY_OPTIONS.map((option) => (
+                        <option key={option.code} value={option.code}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold bf-text-primary md:col-span-2">
+                    Unite de temperature du projet
+                    <select className="bf-select w-full rounded-xl px-3 py-2" value={projectTemperatureUnit} onChange={(event) => setProjectTemperatureUnit(normalizeTemperatureUnit(event.target.value, defaultTemperatureUnit))}>
+                      {TEMPERATURE_UNIT_OPTIONS.map((option) => (
+                        <option key={option.code} value={option.code}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {projectCurrencyMessage ? <p className="text-sm text-emerald-700">{projectCurrencyMessage}</p> : null}
+                {projectCurrencyError ? <p className="text-sm text-red-600">{projectCurrencyError}</p> : null}
+
+                <div className="flex justify-end">
+                  <button type="button" onClick={handleProjectCurrencySave} disabled={isSavingProjectCurrency || !selectedProjectForCurrency} className="bf-primary-button rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-60">
+                    {isSavingProjectCurrency ? 'Enregistrement...' : 'Enregistrer la devise projet'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="surface-panel p-5 md:p-6">
+                <h3 className="text-lg font-black bf-text-primary">Resume devises et temperature</h3>
+                <p className="mt-1 text-sm bf-text-muted">Devise par defaut du compte: {defaultCurrency}</p>
+                <p className="mt-1 text-sm bf-text-muted">Unite de temperature par defaut: °{defaultTemperatureUnit}</p>
+                <div className="mt-4 space-y-3">
+                  {Object.entries(projectCurrencyOverrides).length === 0 ? (
+                    <p className="text-sm bf-text-muted">Aucune surcharge projet pour le moment.</p>
+                  ) : (
+                    Object.entries(projectCurrencyOverrides).map(([projectId, currency]) => {
+                      const projectLabel = projects.find((project) => project.id === projectId)?.name ?? projectId;
+                      const unit = projectTemperatureUnitOverrides[projectId] ?? defaultTemperatureUnit;
+                      return (
+                        <div key={projectId} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                          <p className="font-bold bf-text-primary">{projectLabel}</p>
+                          <p className="bf-text-muted">{currency} · °{unit}</p>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
