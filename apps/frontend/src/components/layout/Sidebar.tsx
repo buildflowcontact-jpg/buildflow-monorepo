@@ -25,7 +25,6 @@ type NavItem = {
 
 const ESSENTIAL_ITEMS: NavItem[] = [
   { permission: 'module:dashboard', to: '/dashboard', label: 'Tableau de bord', icon: Home },
-  { permission: 'module:piloter', to: '/taches', label: 'Projets', icon: FolderKanban },
   { permission: 'module:piloter', to: '/taches', label: 'Taches', icon: ClipboardList },
   { permission: 'module:planifier', to: '/planifier', label: 'Planning', icon: CalendarDays },
   { permission: 'module:executer', to: '/documents', label: 'Documents', icon: FileText },

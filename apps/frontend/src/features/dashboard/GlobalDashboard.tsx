@@ -1,9 +1,20 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CalendarCheck2, CheckCircle2, Clock3, Info, PackageX, Sun, Users, Wallet } from 'lucide-react';
 import { usePortfolioDashboard } from '@/modules/kpi/hooks/usePortfolioDashboard';
 import { useProjectStore } from '@/store/projectStore';
 import { SkeletonCard, SkeletonKpiGrid } from '@/components/ui/Skeleton';
+
+type DashboardTab = 'overview' | 'progress' | 'planning' | 'team' | 'documents' | 'incidents';
+
+const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
+  { id: 'overview', label: "Vue d'ensemble" },
+  { id: 'progress', label: 'Avancement' },
+  { id: 'planning', label: 'Planning' },
+  { id: 'team', label: 'Equipe' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'incidents', label: 'Incidents' },
+];
 
 function RingProgress({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(100, value));
@@ -53,6 +64,7 @@ export function GlobalDashboard() {
   const { data, isLoading } = usePortfolioDashboard();
   const navigate = useNavigate();
   const { setCurrentProjectId } = useProjectStore();
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
 
   const sortedProjects = useMemo(() => {
     if (!data) return [];
@@ -157,6 +169,19 @@ export function GlobalDashboard() {
           >
             Ouvrir le projet
           </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-1 border-b border-slate-200 pb-1">
+          {DASHBOARD_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${activeTab === tab.id ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </section>
 
