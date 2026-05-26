@@ -1,7 +1,8 @@
 
 import React, { Suspense, useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Bell, ChevronDown, ChevronRight, Plus, Search } from 'lucide-react';
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { useToast } from "./ui/ToastProvider";
 import { useAuth, signOut } from "./modules/chantier/hooks/useAuth";
@@ -20,7 +21,6 @@ import { t } from "./i18n";
 import { ProjectProvider } from "./app/providers/ProjectProvider";
 import { PermissionProvider } from "./app/providers/PermissionProvider";
 import { AppContextProvider } from "./app/providers/AppContext";
-import { usePermission } from "./app/providers/PermissionProvider";
 
 const AuthForm = React.lazy(() => import("./components/ui/AuthForm").then((module) => ({ default: module.AuthForm })));
 const GlobalDashboard = React.lazy(() => import("./features/dashboard/GlobalDashboard").then((module) => ({ default: module.GlobalDashboard })));
@@ -44,7 +44,6 @@ const AccountSettings = React.lazy(() => import("./modules/settings/components/A
 const AuditTrailPage = React.lazy(() => import("./modules/audit/pages/AuditTrailPage").then((module) => ({ default: module.AuditTrailPage })));
 const CreateProjectPanel = React.lazy(() => import("./components/shared/CreateProjectPanel").then((module) => ({ default: module.CreateProjectPanel })));
 const ScheduleModule = React.lazy(() => import("./modules/schedule/ScheduleModule").then((module) => ({ default: module.ScheduleModule })));
-const QuickActionPro = React.lazy(() => import("./QuickActionPro"));
 
 function SectionLoader({ label = "Chargement du module..." }: { label?: string }) {
   return (
@@ -55,19 +54,17 @@ function SectionLoader({ label = "Chargement du module..." }: { label?: string }
   );
 }
 
-function QuickActionDock({ projectId, activeDocumentId }: { projectId: string | null; activeDocumentId: string | null }) {
-  const { can } = usePermission();
-
-  if (!projectId || !can('module:terrain')) {
-    return null;
-  }
-
-  return (
-    <Suspense fallback={null}>
-      <QuickActionPro projectId={projectId} activeDocumentId={activeDocumentId ?? undefined} />
-    </Suspense>
-  );
-}
+const PAGE_LABELS: Record<string, string> = {
+  '/dashboard': 'Tableau de bord',
+  '/taches': 'Taches',
+  '/planifier': 'Planning',
+  '/documents': 'Documents',
+  '/executer': 'Documents',
+  '/equipe': 'Equipe',
+  '/approvisionner': 'Approvisionnements',
+  '/incidents': 'Incidents',
+  '/parametres': 'Parametres',
+};
 
 function App() {
   const { user, loading } = useAuth();
@@ -198,6 +195,8 @@ function App() {
     name: project.name,
     code: project.code,
   }));
+  const pageLabel = PAGE_LABELS[location.pathname] ?? 'Workspace';
+  const topbarProjectName = selectedProject?.name ?? 'Projet';
 
   return (
     <ProjectProvider>
@@ -228,7 +227,48 @@ function App() {
             }}
           />
 
-          <main className="min-w-0 flex-1 space-y-6 md:h-full md:overflow-y-auto md:px-8 md:py-8">
+          <main className="min-w-0 flex-1 space-y-4 md:h-full md:overflow-y-auto md:px-6 md:py-5">
+            <div className="hidden md:flex items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white px-5 py-3 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)]">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <span>Projets</span>
+                  <ChevronRight size={14} />
+                  <span className="truncate">{topbarProjectName}</span>
+                  <ChevronRight size={14} />
+                  <span className="text-slate-800">{pageLabel}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 focus-within:border-blue-300">
+                  <Search size={16} className="text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher (projets, taches, documents...)"
+                    className="w-72 bg-transparent text-sm text-slate-700 outline-none"
+                  />
+                </label>
+
+                <button type="button" className="relative rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50">
+                  <Bell size={17} />
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">3</span>
+                </button>
+
+                <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                  <Plus size={16} />
+                  Creer
+                  <ChevronDown size={14} />
+                </button>
+
+                <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left hover:bg-slate-50">
+                  <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black text-slate-700">
+                    {sidebarUserName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <ChevronDown size={14} className="text-slate-500" />
+                </button>
+              </div>
+            </div>
+
             {isProjectsLoading ? (
               <SectionLoader label="Chargement des projets..." />
             ) : null}
@@ -251,10 +291,8 @@ function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.22 }}
-                  className="surface-panel p-5 md:p-6"
+                  className="space-y-5"
                 >
-                  <h2 className="bf-text-primary font-black text-2xl mb-1">Tableau de bord</h2>
-                  <p className="bf-text-muted mb-5">Tous vos projets en un coup d'oeil</p>
                   <Suspense fallback={<SectionLoader label="Chargement du tableau de bord..." />}>
                     <GlobalDashboard />
                   </Suspense>
@@ -542,7 +580,6 @@ function App() {
         </div>
 
         <MobileNav />
-        <QuickActionDock projectId={resolvedProjectId} activeDocumentId={activeDocumentId} />
       </div>
     </ThemeProvider>
         </AppContextProvider>
