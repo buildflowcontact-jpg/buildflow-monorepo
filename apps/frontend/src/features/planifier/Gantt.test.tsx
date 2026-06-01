@@ -1,7 +1,20 @@
 
+
 import React from 'react';
 import { render, screen, fireEvent, act } from "@testing-library/react"
 import { Gantt } from "./Gantt"
+
+// Mock createSVGPoint et getBBox pour JSDOM
+beforeAll(() => {
+  if (!SVGSVGElement.prototype.createSVGPoint) {
+    SVGSVGElement.prototype.createSVGPoint = function () {
+      return { x: 0, y: 0, matrixTransform: () => ({ x: 0, y: 0 }) };
+    };
+  }
+  if (!SVGElement.prototype.getBBox) {
+    SVGElement.prototype.getBBox = () => ({ x: 0, y: 0, width: 100, height: 20 });
+  }
+});
 
 describe("Gantt", () => {
   it("affiche les tâches et permet d'en ajouter", async () => {

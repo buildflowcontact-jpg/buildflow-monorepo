@@ -1,7 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { CalendarDays, CheckCircle2, ChevronDown, ChevronRight, CircleDot, Clock3, Filter, ListFilter, Play, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { exportTasksToCSV } from './exportTasksToCSV';
+import { exportTasksToPDF } from './exportTasksToPDF';
+import { useToast } from '@/ui/ToastProvider';
 import { BodyPortal } from '@/components/ui/BodyPortal';
+import { useAuth } from '@/modules/chantier/hooks/useAuth';
+import { useProjectStore } from '@/store/projectStore';
+import { logAudit } from '@/services/audit';
+import { useAuditLogs } from '@/modules/audit/hooks/useAuditLogs';
 
 type TaskStatus = 'todo' | 'in_progress' | 'waiting' | 'done';
 type TaskPriority = 'low' | 'medium' | 'high';
@@ -163,15 +170,37 @@ const PRIORITY_TITLE: Record<TaskPriority, string> = {
   high: 'Haute',
 };
 
+const FILTERS_KEY = 'taches-filtres';
+
+function loadFilters() {
+  try {
+    const raw = localStorage.getItem(FILTERS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveFilters(filters: any) {
+  try {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+  } catch {}
+}
+
 export function Taches() {
+  const { showToast } = useToast() || {};
+  const { user } = useAuth();
+  const currentProjectId = useProjectStore((state) => state.currentProjectId);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedSubTaskRef, setSelectedSubTaskRef] = useState<{ taskId: string; subTaskId: string } | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
-  const [priorityFilter, setPriorityFilter] = useState<'all' | TaskPriority>('all');
-  const [assigneeFilter, setAssigneeFilter] = useState<'all' | string>('all');
+  const initialFilters = loadFilters() || { searchTerm: '', statusFilter: 'all', priorityFilter: 'all', assigneeFilter: 'all' };
+  const [searchTerm, setSearchTerm] = useState<string>(initialFilters.searchTerm);
+  const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>(initialFilters.statusFilter);
+  const [priorityFilter, setPriorityFilter] = useState<'all' | TaskPriority>(initialFilters.priorityFilter);
+  const [assigneeFilter, setAssigneeFilter] = useState<'all' | string>(initialFilters.assigneeFilter);
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>(INITIAL_TASKS.map((task) => task.id));
 
   const [title, setTitle] = useState('');
@@ -186,6 +215,23 @@ export function Taches() {
   const [subTaskDueDate, setSubTaskDueDate] = useState('');
   const [subTaskPriority, setSubTaskPriority] = useState<TaskPriority>('medium');
   const [subTaskStatus, setSubTaskStatus] = useState<TaskStatus>('todo');
+
+  const auditFilters = useMemo(
+    () => ({
+      projectId: currentProjectId ?? undefined,
+      entityType: 'task',
+    }),
+    [currentProjectId]
+  );
+
+  const { data: auditLogs, refetch: refetchAuditLogs } = useAuditLogs(auditFilters);
+
+  const historyEntries = useMemo(
+    () => (auditLogs ?? [])
+      .filter((log) => ['CREATE', 'UPDATE', 'DELETE', 'EXPORT'].includes(log.action))
+      .slice(0, 30),
+    [auditLogs]
+  );
 
   const selectedSubTask = useMemo(() => {
     if (!selectedSubTaskRef) return null;
@@ -245,6 +291,18 @@ export function Taches() {
     resetForm();
   };
 
+  const recordTaskAudit = (action: string, metadata: Record<string, unknown>) => {
+    if (!user?.id) return;
+    void logAudit({
+      userId: user.id,
+      action,
+      entity: { type: 'task', project_id: currentProjectId ?? undefined },
+      metadata,
+    }).then(() => {
+      void refetchAuditLogs();
+    });
+  };
+
   const saveTask = () => {
     if (!selectedTaskId || !title.trim() || !assignee.trim() || !startDate || !dueDate) return;
     setTasks((prev) => prev.map((task) => (
@@ -261,12 +319,15 @@ export function Taches() {
           }
         : task
     )));
+    recordTaskAudit('UPDATE', { task_id: selectedTaskId, title: title.trim() });
     closeTaskModal();
   };
 
   const deleteTask = () => {
     if (!selectedTaskId) return;
+    const deletedTaskTitle = tasks.find((task) => task.id === selectedTaskId)?.title ?? title;
     setTasks((prev) => prev.filter((task) => task.id !== selectedTaskId));
+    recordTaskAudit('DELETE', { task_id: selectedTaskId, title: deletedTaskTitle });
     closeTaskModal();
   };
 
@@ -298,21 +359,20 @@ export function Taches() {
   const createTask = () => {
     if (!title.trim() || !assignee.trim() || !startDate || !dueDate) return;
     const nextCode = String(tasks.length + 1).padStart(2, '0');
-    setTasks((prev) => [
-      {
-        id: `t-${Date.now()}`,
-        code: nextCode,
-        title: title.trim(),
-        description: description.trim(),
-        assignee: assignee.trim(),
-        startDate,
-        dueDate,
-        priority,
-        status,
-        subTasks: [],
-      },
-      ...prev,
-    ]);
+    const newTask = {
+      id: `t-${Date.now()}`,
+      code: nextCode,
+      title: title.trim(),
+      description: description.trim(),
+      assignee: assignee.trim(),
+      startDate,
+      dueDate,
+      priority,
+      status,
+      subTasks: [],
+    };
+    setTasks((prev) => [newTask, ...prev]);
+    recordTaskAudit('CREATE', { task_id: newTask.id, title: newTask.title });
     resetForm();
     setIsCreateModalOpen(false);
   };
@@ -403,26 +463,64 @@ export function Taches() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="bf-text-primary font-black text-2xl mb-1">Taches & Sous-taches</h2>
-          <p className="bf-text-muted">Cliquez sur une tache pour ouvrir son detail complet.</p>
+      <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="bf-text-primary mb-1 text-2xl font-black tracking-[-0.015em]">Taches & Sous-taches</h2>
+            <p className="bf-text-muted">Cliquez sur une tache pour ouvrir son detail complet.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-xl"
+              onClick={async () => {
+                try {
+                  await exportTasksToCSV(filteredTasks);
+                  showToast?.('Export CSV effectue', 'success');
+                  recordTaskAudit('EXPORT', { format: 'csv', count: filteredTasks.length });
+                } catch {
+                  showToast?.("Echec de l'export CSV", 'error');
+                }
+              }}
+            >
+              Exporter CSV
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-xl"
+              onClick={async () => {
+                try {
+                  await exportTasksToPDF(filteredTasks);
+                  showToast?.('Export PDF effectue', 'success');
+                  recordTaskAudit('EXPORT', { format: 'pdf', count: filteredTasks.length });
+                } catch {
+                  showToast?.("Echec de l'export PDF", 'error');
+                }
+              }}
+            >
+              Exporter PDF
+            </Button>
+            <Button
+              type="button"
+              className="h-10 rounded-xl"
+              onClick={() => {
+                resetForm();
+                setIsCreateModalOpen(true);
+              }}
+            >
+              + Creer une tache
+            </Button>
+          </div>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            resetForm();
-            setIsCreateModalOpen(true);
-          }}
-        >
-          + Creer une tache
-        </Button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+      <div className="rounded-[24px] border border-slate-200 bg-white p-3.5 shadow-sm md:p-4">
         <div className="grid gap-3 md:grid-cols-5">
           {metricCards.map((card) => (
-            <div key={card.label} className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
+            <div key={card.label} className="rounded-2xl border border-slate-100 bg-slate-50/80 px-3.5 py-3.5">
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 {card.icon}
                 <span>{card.label}</span>
@@ -434,23 +532,29 @@ export function Taches() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4 space-y-4">
+      <div className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm md:p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-2">
             <label className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
-                className="h-10 w-64 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-400"
-                placeholder="Rechercher une tache..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
+                  className="h-10 w-64 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-[13px] outline-none placeholder:text-[12px] focus:border-blue-400"
+                  placeholder="Rechercher une tache..."
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    saveFilters({ searchTerm: event.target.value, statusFilter, priorityFilter, assigneeFilter });
+                  }}
+                />
             </label>
 
             <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[13px]"
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as 'all' | TaskStatus)}
+              onChange={(event) => {
+                setStatusFilter(event.target.value as 'all' | TaskStatus);
+                saveFilters({ searchTerm, statusFilter: event.target.value, priorityFilter, assigneeFilter });
+              }}
             >
               <option value="all">Statut</option>
               <option value="todo">A faire</option>
@@ -460,9 +564,12 @@ export function Taches() {
             </select>
 
             <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[13px]"
               value={priorityFilter}
-              onChange={(event) => setPriorityFilter(event.target.value as 'all' | TaskPriority)}
+              onChange={(event) => {
+                setPriorityFilter(event.target.value as 'all' | TaskPriority);
+                saveFilters({ searchTerm, statusFilter, priorityFilter: event.target.value, assigneeFilter });
+              }}
             >
               <option value="all">Priorite</option>
               <option value="high">Haute</option>
@@ -471,9 +578,12 @@ export function Taches() {
             </select>
 
             <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[13px]"
               value={assigneeFilter}
-              onChange={(event) => setAssigneeFilter(event.target.value)}
+              onChange={(event) => {
+                setAssigneeFilter(event.target.value);
+                saveFilters({ searchTerm, statusFilter, priorityFilter, assigneeFilter: event.target.value });
+              }}
             >
               <option value="all">Responsable</option>
               {assigneeOptions.map((assignee) => (
@@ -481,17 +591,17 @@ export function Taches() {
               ))}
             </select>
 
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600">
+            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-600">
               <Filter size={14} />
               Filtres
             </button>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600">
+            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-600">
               <ListFilter size={14} />
             </button>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-100">
+        <div className="overflow-hidden rounded-2xl border border-slate-100">
             <table className="w-full table-fixed text-sm">
               <colgroup>
                 <col className="w-[36%]" />
@@ -501,14 +611,14 @@ export function Taches() {
                 <col className="w-[14%]" />
                 <col className="w-[4%]" />
               </colgroup>
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-[0.05em] text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 text-left">Tache</th>
-                  <th className="px-4 py-3 text-left">Statut</th>
-                  <th className="px-4 py-3 text-left">Priorite</th>
-                  <th className="px-4 py-3 text-left">Responsable</th>
-                  <th className="px-4 py-3 text-left">Echeance</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3.5 text-left">Tache</th>
+                  <th className="px-4 py-3.5 text-left">Statut</th>
+                  <th className="px-4 py-3.5 text-left">Priorite</th>
+                  <th className="px-4 py-3.5 text-left">Responsable</th>
+                  <th className="px-4 py-3.5 text-left">Echeance</th>
+                  <th className="px-4 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -780,6 +890,22 @@ export function Taches() {
           </div>
         </BodyPortal>
       ) : null}
+
+      {/* Historique des actions */}
+      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4">
+        <h3 className="font-bold text-lg mb-2">Historique des actions</h3>
+        <ul className="space-y-1 text-sm">
+          {historyEntries.length === 0 && <li className="text-slate-400">Aucune action recente.</li>}
+          {historyEntries.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-2">
+              <span className="text-slate-500">{new Date(entry.created_at).toLocaleString('fr-FR')}</span>
+              <span className="font-semibold">{entry.action}</span>
+              <span className="text-slate-700">{typeof entry.metadata?.title === 'string' ? entry.metadata.title : 'Tache'}</span>
+              <span className="text-slate-400">par {entry.user_id ? `${entry.user_id.slice(0, 8)}...` : 'utilisateur'}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

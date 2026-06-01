@@ -228,39 +228,39 @@ function App() {
           />
 
           <div className="min-w-0 flex-1 md:flex md:h-full md:flex-col">
-            <header className="hidden md:flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 pb-3 pt-4">
+            <header className="hidden md:flex items-center justify-between gap-5 border-b border-slate-200 bg-white/95 px-6 py-3.5 backdrop-blur-sm">
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.045em] text-slate-400">
                   <span className="hover:text-slate-600">Projets</span>
                   <ChevronRight size={14} />
                   <span className="truncate text-slate-500">{topbarProjectName}</span>
                   <ChevronRight size={14} />
-                  <span className="text-slate-700">{pageLabel}</span>
+                  <span className="font-bold text-slate-700">{pageLabel}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm text-slate-500 focus-within:border-blue-300 focus-within:bg-white">
+                <label className="group flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-500 transition-colors focus-within:border-blue-300 focus-within:bg-white">
                   <Search size={15} className="text-slate-400" />
                   <input
                     type="text"
                     placeholder="Rechercher (projets, taches, documents...)"
-                    className="w-72 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                    className="w-[18rem] bg-transparent text-[13px] text-slate-700 outline-none placeholder:text-[12px] placeholder:text-slate-400 lg:w-[21rem]"
                   />
                 </label>
 
-                <button type="button" className="relative rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50">
+                <button type="button" className="relative rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-500 transition-colors hover:bg-slate-50">
                   <Bell size={17} />
                   <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">3</span>
                 </button>
 
-                <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_-18px_rgba(37,99,235,0.85)] hover:bg-blue-700">
+                <button type="button" className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-[13px] font-semibold tracking-[0.01em] text-white shadow-[0_18px_30px_-22px_rgba(37,99,235,0.95)] transition-colors hover:bg-blue-700">
                   <Plus size={16} />
                   Creer
                   <ChevronDown size={14} />
                 </button>
 
-                <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left hover:bg-slate-50">
+                <button type="button" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1 text-left transition-colors hover:bg-slate-50">
                   <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black text-slate-700">
                     {sidebarUserName.slice(0, 2).toUpperCase()}
                   </span>
@@ -269,7 +269,7 @@ function App() {
               </div>
             </header>
 
-          <main className="min-w-0 flex-1 space-y-4 md:overflow-y-auto md:px-6 md:py-5">
+          <main className="min-w-0 flex-1 space-y-4 md:overflow-y-auto md:px-6 md:py-6">
 
             {isProjectsLoading ? (
               <SectionLoader label="Chargement des projets..." />

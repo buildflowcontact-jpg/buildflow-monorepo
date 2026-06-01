@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CalendarDays, Info, PackageX, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, Check, Cloud, CloudRain, Info, MoreVertical, PackageX, Sun, Users, Wallet } from 'lucide-react';
 import { usePortfolioDashboard } from '@/modules/kpi/hooks/usePortfolioDashboard';
 import { useAuth } from '@/modules/chantier/hooks/useAuth';
 import { useProjectStore } from '@/store/projectStore';
@@ -41,6 +41,16 @@ function StatusDot({ tone }: { tone: 'done' | 'active' | 'upcoming' }) {
       ? 'bg-blue-500'
       : 'bg-slate-300';
   return <span className={`h-2.5 w-2.5 rounded-full ${classes}`} />;
+}
+
+function MiniTrend({ value, total, color }: { value: number; total: number; color: string }) {
+  const safeTotal = Math.max(total, 1);
+  const width = Math.max(12, Math.round((value / safeTotal) * 100));
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${width}%` }} />
+    </div>
+  );
 }
 
 function kCurrency(value: number, currency: ReturnType<typeof normalizeCurrency>) {
@@ -137,12 +147,7 @@ export function GlobalDashboard() {
     `${leadProject?.name ?? 'Projet'}: point chantier valide`,
   ];
 
-  const forecast = [
-    { day: 'Mar.', max: 18, min: 10, icon: Sun, color: 'text-amber-500' },
-    { day: 'Mer.', max: 20, min: 11, icon: Sun, color: 'text-amber-500' },
-    { day: 'Jeu.', max: 19, min: 9, icon: CloudRain, color: 'text-sky-500' },
-    { day: 'Ven.', max: 17, min: 8, icon: Cloud, color: 'text-slate-400' },
-  ];
+
 
   const plannedProgress = [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 90, 100];
   const actualBase = [8, 12, 22, 25, 32, 35, 44, 51, 58, 64, 72, 84];
@@ -163,47 +168,157 @@ export function GlobalDashboard() {
   const toX = (index: number) => chartPaddingX + (index * (chartWidth - chartPaddingX * 2)) / (plannedProgress.length - 1);
   const toY = (value: number) => chartPaddingTop + ((100 - value) / 100) * chartPlotHeight;
   const plannedPolyline = plannedProgress.map((value, index) => `${toX(index)},${toY(value)}`).join(' ');
+  const dashboardTabs = [
+    { label: "Vue d'ensemble", to: '/dashboard', active: true },
+    { label: 'Avancement', to: '/planifier', active: false },
+    { label: 'Planning', to: '/planifier', active: false },
+    { label: 'Equipe', to: '/equipe', active: false },
+    { label: 'Documents', to: '/documents', active: false },
+    { label: 'Incidents', to: '/incidents', active: false },
+  ] as const;
+
+  const dashboardCards = [
+    {
+      title: 'Budget',
+      accent: 'from-violet-500 to-indigo-500',
+      icon: Wallet,
+      primaryLabel: 'Consomme',
+      primaryValue: kCurrency(data.totalBudgetSpent, effectiveCurrency),
+      secondaryLabel: 'Restant',
+      secondaryValue: kCurrency(budgetRemaining, effectiveCurrency),
+      footer: 'Voir le detail du budget',
+      progressColor: 'bg-violet-500',
+      progressValue: data.totalBudgetSpent,
+      progressMax: data.totalBudgetSold,
+      stats: [
+        `${budgetPct}% engage`,
+        `${100 - Math.min(100, budgetPct)}% marge`,
+      ],
+    },
+    {
+      title: 'Charge equipe',
+      accent: 'from-emerald-500 to-teal-500',
+      icon: Users,
+      primaryLabel: 'Personnes affectees',
+      primaryValue: String(totalMembers),
+      secondaryLabel: 'Disponibilite',
+      secondaryValue: `${Math.max(0, 100 - unavailableMembers * 10)}%`,
+      footer: "Voir l'equipe",
+      progressColor: 'bg-emerald-500',
+      progressValue: onSiteMembers + officeMembers,
+      progressMax: totalMembers,
+      stats: [
+        `Sur site ${onSiteMembers}`,
+        `Bureau ${officeMembers}`,
+        `Indisponibles ${unavailableMembers}`,
+      ],
+    },
+    {
+      title: 'Commandes',
+      accent: 'from-blue-500 to-cyan-500',
+      icon: PackageX,
+      primaryLabel: 'Commandes au total',
+      primaryValue: String(data.lateOrdersToPend + data.lateDeliveries + 14),
+      secondaryLabel: 'Livrees',
+      secondaryValue: '14',
+      footer: 'Voir toutes les commandes',
+      progressColor: 'bg-blue-500',
+      progressValue: 14,
+      progressMax: data.lateOrdersToPend + data.lateDeliveries + 14,
+      stats: [
+        `En retard ${data.lateOrdersToPend}`,
+        `En attente ${data.lateDeliveries}`,
+      ],
+    },
+    {
+      title: 'Incidents',
+      accent: 'from-rose-500 to-orange-500',
+      icon: AlertTriangle,
+      primaryLabel: 'Incidents au total',
+      primaryValue: String(data.openIncidents),
+      secondaryLabel: 'Critiques',
+      secondaryValue: String(data.criticalIncidents),
+      footer: 'Voir tous les incidents',
+      progressColor: 'bg-rose-500',
+      progressValue: data.criticalIncidents,
+      progressMax: Math.max(data.openIncidents, 1),
+      stats: [
+        `En cours ${Math.max(0, data.openIncidents - data.criticalIncidents)}`,
+        `Resolus ${Math.max(0, 8 - data.openIncidents)}`,
+      ],
+    },
+  ] as const;
+
+  const recentFeed = [
+    {
+      id: 'a1',
+      initials: 'JM',
+      title: 'Julien Martin a valide la commande CMD-045',
+      time: 'il y a 2 heures',
+      tone: 'bg-slate-100 text-slate-700',
+    },
+    {
+      id: 'a2',
+      initials: 'SB',
+      title: 'Sophie Bernard a cree un incident INC-128',
+      time: 'il y a 4 heures',
+      tone: 'bg-orange-100 text-orange-700',
+    },
+    {
+      id: 'a3',
+      initials: 'OK',
+      title: 'La commande CMD-039 a ete livree',
+      time: 'il y a 1 jour',
+      tone: 'bg-emerald-100 text-emerald-700',
+    },
+    {
+      id: 'a4',
+      initials: 'TP',
+      title: 'Thomas Petit a ajoute un document',
+      time: 'il y a 2 jours',
+      tone: 'bg-sky-100 text-sky-700',
+    },
+  ] as const;
+
+  const weather = [
+    { day: 'Mar.', max: 18, min: 10, icon: Sun, tone: 'text-amber-500' },
+    { day: 'Mer.', max: 20, min: 11, icon: Sun, tone: 'text-amber-500' },
+    { day: 'Jeu.', max: 19, min: 9, icon: CloudRain, tone: 'text-sky-500' },
+    { day: 'Ven.', max: 17, min: 8, icon: Cloud, tone: 'text-slate-400' },
+  ] as const;
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <h2 className="text-4xl font-black tracking-tight text-slate-900">{leadProject?.name ?? 'Projet'}</h2>
-            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">En cours</span>
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_64px_-50px_rgba(15,23,42,0.48)]">
+        <div className="border-b border-slate-100 px-7 pb-4 pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-[2.2rem] font-black tracking-[-0.015em] text-slate-950">{leadProject?.name ?? 'Projet'}</h2>
+                <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">En cours</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-5 border-b border-slate-100/80 pb-[-1px]">
+            {dashboardTabs.map((tab) => (
+              <button
+                key={tab.label}
+                type="button"
+                onClick={() => navigate(tab.to)}
+                className={`relative pb-4 text-[13px] font-semibold tracking-[0.01em] transition-colors ${tab.active ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                {tab.label}
+                {tab.active ? <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-blue-600" /> : null}
+              </button>
+            ))}
           </div>
         </div>
-      </section>
 
-      {(data.lateOrdersToPend > 0 || data.criticalIncidents > 0) && (
-        <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-3">
-          <AlertTriangle size={18} className="shrink-0 text-red-600" />
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            {data.lateOrdersToPend > 0 && (
-              <span className="font-semibold text-red-700">
-                {data.lateOrdersToPend} commande{data.lateOrdersToPend > 1 ? 's' : ''} en retard
-              </span>
-            )}
-            {data.criticalIncidents > 0 && (
-              <span className="font-semibold text-amber-700">
-                {data.criticalIncidents} incident{data.criticalIncidents > 1 ? 's' : ''} critique{data.criticalIncidents > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            className="ml-auto shrink-0 text-xs font-bold text-red-600 underline hover:text-red-800"
-            onClick={() => navigate('/incidents')}
-          >
-            Voir les alertes →
-          </button>
-        </div>
-      )}
-
-      <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h3 className="text-lg font-black text-slate-900">Avancement global du projet</h3>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+        <div className="space-y-6 px-7 py-6">
+          <section className="grid gap-4 xl:grid-cols-[1.65fr_0.85fr]">
+            <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-[1.05rem] font-black tracking-[-0.01em] text-slate-900">Avancement global du projet</h3>
+              <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1fr_0.9fr]">
             <div className="grid place-items-center">
               <RingProgress value={completion} />
             </div>
@@ -257,16 +372,16 @@ export function GlobalDashboard() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-lg font-black text-slate-900">Alertes prioritaires</h3>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">{alerts.length}</span>
-          </div>
-          <div className="space-y-2">
-            {alerts.map((alert) => {
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-black text-slate-900">Alertes prioritaires</h3>
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">{alerts.length}</span>
+              </div>
+              <div className="space-y-3">
+                {alerts.map((alert) => {
               const toneClass = alert.tone === 'red'
                 ? 'bg-red-50 text-red-700 border-red-100'
                 : alert.tone === 'amber'
@@ -279,119 +394,81 @@ export function GlobalDashboard() {
                   key={alert.id}
                   type="button"
                   onClick={() => navigate(alert.to)}
-                  className={`w-full rounded-xl border p-3 text-left ${toneClass}`}
+                  className={`w-full rounded-2xl border p-4 text-left transition-transform hover:-translate-y-0.5 ${toneClass}`}
                 >
                   <div className="flex items-start gap-3">
                     <alert.icon size={16} className="mt-0.5" />
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold">{alert.title}</p>
                       <p className="text-xs opacity-90">{alert.link}</p>
                     </div>
+                    <ArrowRight size={14} className="mt-1 opacity-70" />
                   </div>
                 </button>
               );
-            })}
-          </div>
-        </div>
-      </section>
+                })}
+              </div>
+            </div>
+          </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-violet-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-slate-900">Budget</p>
-            <Wallet size={16} className="text-violet-600" />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <p className="text-xs text-slate-500">Consomme</p>
-              <p className="font-black text-slate-900">{kCurrency(data.totalBudgetSpent, effectiveCurrency)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Restant</p>
-              <p className="font-black text-emerald-600">{kCurrency(budgetRemaining, effectiveCurrency)}</p>
-            </div>
-          </div>
-          <div className="mt-3">
-            <MicroBar value={data.totalBudgetSpent} max={data.totalBudgetSold} color="bg-violet-500" />
-          </div>
-        </article>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {dashboardCards.map((card) => (
+              <article key={card.title} className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br ${card.accent} text-white shadow-sm`}>
+                      <card.icon size={16} />
+                    </span>
+                    <p className="text-sm font-black text-slate-900">{card.title}</p>
+                  </div>
+                  <button type="button" className="rounded-xl p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
 
-        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-emerald-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-slate-900">Charge equipe</p>
-            <Users size={16} className="text-emerald-600" />
-          </div>
-          <p className="mt-3 text-4xl font-black text-slate-900">{totalMembers}</p>
-          <div className="mt-3 space-y-1 text-xs text-slate-600">
-            <p>Sur site: {onSiteMembers}</p>
-            <p>En bureau: {officeMembers}</p>
-            <p>Indisponibles: {unavailableMembers}</p>
-          </div>
-        </article>
+                <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-500">{card.primaryLabel}</p>
+                    <p className="mt-1 text-[2rem] font-black leading-none text-slate-950">{card.primaryValue}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">{card.secondaryLabel}</p>
+                    <p className="mt-1 text-[1.6rem] font-black leading-none text-emerald-600">{card.secondaryValue}</p>
+                  </div>
+                </div>
 
-        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-blue-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-slate-900">Commandes</p>
-            <PackageX size={16} className="text-blue-600" />
-          </div>
-          <p className="mt-3 text-4xl font-black text-slate-900">{data.lateOrdersToPend + data.lateDeliveries + 14}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-600">
-            <div>
-              <p className="font-bold text-emerald-600">14</p>
-              <p>Livrees</p>
-            </div>
-            <div>
-              <p className="font-bold text-red-600">{data.lateOrdersToPend}</p>
-              <p>En retard</p>
-            </div>
-            <div>
-              <p className="font-bold text-amber-600">{data.lateDeliveries}</p>
-              <p>En attente</p>
-            </div>
-          </div>
-        </article>
+                <div className="mt-4">
+                  <MiniTrend value={card.progressValue} total={card.progressMax} color={card.progressColor} />
+                </div>
 
-        <article className="rounded-2xl border border-slate-200 border-t-4 border-t-red-500 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-slate-900">Incidents</p>
-            <AlertTriangle size={16} className="text-red-600" />
-          </div>
-          <p className="mt-3 text-4xl font-black text-slate-900">{data.openIncidents}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-600">
-            <div>
-              <p className="font-bold text-red-600">{data.criticalIncidents}</p>
-              <p>Ouverts</p>
-            </div>
-            <div>
-              <p className="font-bold text-amber-600">{Math.max(0, data.openIncidents - data.criticalIncidents)}</p>
-              <p>En cours</p>
-            </div>
-            <div>
-              <p className="font-bold text-emerald-600">{Math.max(0, 8 - data.openIncidents)}</p>
-              <p>Resolus</p>
-            </div>
-          </div>
-        </article>
-      </section>
+                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+                  {card.stats.map((stat) => (
+                    <span key={stat}>{stat}</span>
+                  ))}
+                </div>
 
-      <section className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr_0.8fr]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+                <button type="button" className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700">
+                  {card.footer}
+                  <ArrowRight size={12} />
+                </button>
+              </article>
+            ))}
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[1.45fr_0.8fr_0.7fr]">
+            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-black text-slate-900">Avancement dans le temps</h3>
-            <span className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600">12 derniers mois</span>
+            <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">12 derniers mois</span>
           </div>
           <div className="mt-4 flex items-center gap-4 text-xs">
             <div className="inline-flex items-center gap-2 text-slate-500">
-              <span className="h-2 w-6 rounded-full bg-slate-400" />
+              <span className="h-2 w-6 rounded-full border border-dashed border-sky-400 bg-sky-50" />
               <span>Prevu</span>
             </div>
             <div className="inline-flex items-center gap-2 text-slate-500">
-              <span className="h-2 w-6 rounded-full bg-emerald-500" />
-              <span>Reel en adequation</span>
-            </div>
-            <div className="inline-flex items-center gap-2 text-slate-500">
-              <span className="h-2 w-6 rounded-full bg-red-500" />
-              <span>Reel en retard</span>
+              <span className="h-2 w-6 rounded-full bg-blue-500" />
+              <span>Avancement reel</span>
             </div>
           </div>
           <div className="mt-4 h-72 w-full">
@@ -412,18 +489,15 @@ export function GlobalDashboard() {
               <polyline
                 points={plannedPolyline}
                 fill="none"
-                stroke="#94a3b8"
-                strokeWidth="3"
+                stroke="#93c5fd"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                strokeDasharray="7 7"
               />
 
               {actualProgress.slice(0, -1).map((value, index) => {
                 const nextValue = actualProgress[index + 1];
-                const plannedValue = plannedProgress[index];
-                const nextPlannedValue = plannedProgress[index + 1];
-                const isOnTrack = value >= plannedValue && nextValue >= nextPlannedValue;
-                const stroke = isOnTrack ? '#10b981' : '#ef4444';
 
                 return (
                   <line
@@ -432,7 +506,7 @@ export function GlobalDashboard() {
                     y1={toY(value)}
                     x2={toX(index + 1)}
                     y2={toY(nextValue)}
-                    stroke={stroke}
+                    stroke="#2563eb"
                     strokeWidth="4"
                     strokeLinecap="round"
                   />
@@ -440,15 +514,13 @@ export function GlobalDashboard() {
               })}
 
               {actualProgress.map((value, index) => {
-                const plannedValue = plannedProgress[index];
-                const dotColor = value >= plannedValue ? '#10b981' : '#ef4444';
                 return (
                   <circle
                     key={`actual-dot-${index}`}
                     cx={toX(index)}
                     cy={toY(value)}
                     r="3.5"
-                    fill={dotColor}
+                    fill="#2563eb"
                     stroke="#ffffff"
                     strokeWidth="1.5"
                   />
@@ -456,56 +528,103 @@ export function GlobalDashboard() {
               })}
             </svg>
           </div>
-        </article>
+            </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-black text-slate-900">Activite recente</h3>
             <button type="button" className="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir toute l'activite</button>
           </div>
           <div className="mt-4 space-y-3">
-            {recentActivity.map((item, index) => (
-              <div key={item} className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{index + 1}</span>
+            {recentFeed.map((item) => (
+              <div key={item.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                <span className={`mt-0.5 grid h-9 w-9 place-items-center rounded-full text-xs font-bold ${item.tone}`}>{item.initials}</span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{item}</p>
-                  <p className="text-xs text-slate-500">il y a {index + 1} heure{index > 0 ? 's' : ''}</p>
+                  <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+                  <p className="text-xs text-slate-500">{item.time}</p>
                 </div>
               </div>
             ))}
           </div>
-        </article>
+            </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <CalendarDays size={16} className="text-blue-600" />
-            <h3 className="text-base font-black text-slate-900">Prochaines echeances</h3>
-          </div>
-          <div className="space-y-2">
-            {([
-              { label: 'Clos couvert', date: '15 juil. 2024', tone: 'active' as const },
-              { label: 'Second oeuvre debut', date: '01 sept. 2024', tone: 'upcoming' as const },
-              { label: 'Reception provisoire', date: '15 nov. 2024', tone: 'upcoming' as const },
-              { label: 'Livraison finale', date: dateShort(leadProject?.plannedEndDate ?? null), tone: 'upcoming' as const },
-            ] as const).map((item) => (
-              <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <StatusDot tone={item.tone} />
-                  <span className="text-sm font-semibold text-slate-800">{item.label}</span>
-                </div>
-                <span className="shrink-0 text-xs text-slate-500">{item.date}</span>
+            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Sun size={18} className="text-amber-500" />
+                <h3 className="text-base font-black text-slate-900">Meteo sur site</h3>
               </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
-            onClick={() => navigate('/planifier')}
-          >
-            <CalendarDays size={12} />
-            Voir le planning complet
-          </button>
-        </article>
+              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4">
+                <div className="flex items-center gap-3">
+                  <Sun size={28} className="text-amber-500" />
+                  <div>
+                    <p className="text-4xl font-black text-slate-900">18°C</p>
+                    <p className="text-sm font-semibold text-slate-600">Ensoleille</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-500">
+                  <div>
+                    <p>Vent</p>
+                    <p className="mt-1 font-bold text-slate-800">15 km/h</p>
+                  </div>
+                  <div>
+                    <p>Humidite</p>
+                    <p className="mt-1 font-bold text-slate-800">45%</p>
+                  </div>
+                  <div>
+                    <p>Precipitations</p>
+                    <p className="mt-1 font-bold text-slate-800">0%</p>
+                  </div>
+                  <div>
+                    <p>Indice</p>
+                    <p className="mt-1 font-bold text-emerald-600">Stable</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                {weather.map((day) => (
+                  <div key={day.day} className="rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center">
+                    <p className="text-xs font-semibold text-slate-500">{day.day}</p>
+                    <day.icon size={18} className={`mx-auto mt-2 ${day.tone}`} />
+                    <p className="mt-2 text-sm font-black text-slate-900">{day.max}°</p>
+                    <p className="text-xs text-slate-400">{day.min}°</p>
+                  </div>
+                ))}
+              </div>
+
+              <button type="button" className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                Voir la meteo detaillee
+                <ArrowRight size={12} />
+              </button>
+            </article>
+          </section>
+
+          {(data.lateOrdersToPend > 0 || data.criticalIncidents > 0) ? (
+            <div className="flex items-center gap-3 rounded-[24px] border border-red-200 bg-red-50 px-5 py-3">
+              <AlertTriangle size={18} className="shrink-0 text-red-600" />
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                {data.lateOrdersToPend > 0 ? (
+                  <span className="font-semibold text-red-700">
+                    {data.lateOrdersToPend} commande{data.lateOrdersToPend > 1 ? 's' : ''} en retard
+                  </span>
+                ) : null}
+                {data.criticalIncidents > 0 ? (
+                  <span className="font-semibold text-amber-700">
+                    {data.criticalIncidents} incident{data.criticalIncidents > 1 ? 's' : ''} critique{data.criticalIncidents > 1 ? 's' : ''}
+                  </span>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs font-bold text-red-600 hover:text-red-800"
+                onClick={() => navigate('/incidents')}
+              >
+                Voir les alertes
+                <ArrowRight size={12} />
+              </button>
+            </div>
+          ) : null}
+        </div>
       </section>
     </div>
   );

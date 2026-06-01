@@ -63,6 +63,11 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
   });
   const [attachments, setAttachments] = useState<File[]>([]);
 
+  const orderRefsKey = React.useMemo(
+    () => orders.map((order) => `${order.id}:${order.reference ?? ''}`).join('|'),
+    [orders],
+  );
+
   React.useEffect(() => {
     let mounted = true;
     async function loadDocuments() {
@@ -97,14 +102,19 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
         byRef[ref] = [...(byRef[ref] ?? []), ...(byDocId.get(doc.id) ?? [])];
       });
 
-      if (mounted) setExistingOrderDocs(byRef);
+      if (!mounted) return;
+      setExistingOrderDocs((prev) => {
+        const prevKey = JSON.stringify(prev);
+        const nextKey = JSON.stringify(byRef);
+        return prevKey === nextKey ? prev : byRef;
+      });
     }
 
     loadDocuments();
     return () => {
       mounted = false;
     };
-  }, [orders, projectId]);
+  }, [projectId, orderRefsKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
