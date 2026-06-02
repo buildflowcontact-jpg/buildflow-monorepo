@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CalendarDays, Check, Cloud, CloudRain, Info, MoreVertical, PackageX, Sun, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, Check, Cloud, CloudRain, Info, MoreVertical, PackageX, Users, Wallet } from 'lucide-react';
 import { usePortfolioDashboard } from '@/modules/kpi/hooks/usePortfolioDashboard';
 import { useAuth } from '@/modules/chantier/hooks/useAuth';
 import { useProjectStore } from '@/store/projectStore';
@@ -281,8 +281,8 @@ export function GlobalDashboard() {
   ] as const;
 
   const weather = [
-    { day: 'Mar.', max: 18, min: 10, icon: Sun, tone: 'text-amber-500' },
-    { day: 'Mer.', max: 20, min: 11, icon: Sun, tone: 'text-amber-500' },
+    { day: 'Mar.', max: 18, min: 10, icon: Cloud, tone: 'text-amber-500' },
+    { day: 'Mer.', max: 20, min: 11, icon: Cloud, tone: 'text-amber-500' },
     { day: 'Jeu.', max: 19, min: 9, icon: CloudRain, tone: 'text-sky-500' },
     { day: 'Ven.', max: 17, min: 8, icon: Cloud, tone: 'text-slate-400' },
   ] as const;
@@ -550,12 +550,12 @@ export function GlobalDashboard() {
 
             <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2">
-                <Sun size={18} className="text-amber-500" />
+                <Cloud size={18} className="text-amber-500" />
                 <h3 className="text-base font-black text-slate-900">Meteo sur site</h3>
               </div>
               <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4">
                 <div className="flex items-center gap-3">
-                  <Sun size={28} className="text-amber-500" />
+                  <Cloud size={28} className="text-amber-500" />
                   <div>
                     <p className="text-4xl font-black text-slate-900">18°C</p>
                     <p className="text-sm font-semibold text-slate-600">Ensoleille</p>
