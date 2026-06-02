@@ -12,14 +12,14 @@ function RingProgress({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
     <div
-      className="relative grid h-40 w-40 place-items-center rounded-full"
+      className="relative grid h-28 w-28 place-items-center rounded-full"
       style={{
         background: `conic-gradient(#2563eb ${clamped * 3.6}deg, #dbe5f5 ${clamped * 3.6}deg)`,
       }}
     >
-      <div className="grid h-[152px] w-[152px] place-items-center rounded-full bg-white text-center">
-        <p className="text-4xl font-black text-slate-900">{clamped}%</p>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Avancement</p>
+      <div className="grid h-[104px] w-[104px] place-items-center rounded-full bg-white text-center">
+        <p className="text-2xl font-black text-slate-900">{clamped}%</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Avancement</p>
       </div>
     </div>
   );
@@ -288,18 +288,18 @@ export function GlobalDashboard() {
   ] as const;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_64px_-50px_rgba(15,23,42,0.48)]">
-        <div className="border-b border-slate-100 px-7 pb-4 pt-6">
+        <div className="border-b border-slate-100 px-5 pb-2 pt-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-[2.2rem] font-black tracking-[-0.015em] text-slate-950">{leadProject?.name ?? 'Projet'}</h2>
+                <h2 className="text-xl font-black tracking-[-0.015em] text-slate-950">{leadProject?.name ?? 'Projet'}</h2>
                 <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">En cours</span>
               </div>
             </div>
           </div>
-          <div className="mt-5 flex flex-wrap gap-5 border-b border-slate-100/80 pb-[-1px]">
+          <div className="mt-2 flex flex-wrap gap-4 border-b border-slate-100/80 pb-[-1px]">
             {dashboardTabs.map((tab) => (
               <button
                 key={tab.label}
@@ -314,25 +314,25 @@ export function GlobalDashboard() {
           </div>
         </div>
 
-        <div className="space-y-6 px-7 py-6">
+        <div className="space-y-3 px-5 py-3">
           <section className="grid gap-4 xl:grid-cols-[1.65fr_0.85fr]">
-            <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-[1.05rem] font-black tracking-[-0.01em] text-slate-900">Avancement global du projet</h3>
-              <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1fr_0.9fr]">
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-black tracking-[-0.01em] text-slate-900">Avancement global du projet</h3>
+              <div className="mt-3 grid gap-3 lg:grid-cols-[0.9fr_1fr_0.9fr]">
             <div className="grid place-items-center">
               <RingProgress value={completion} />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-slate-500">Budget consomme</p>
-                  <p className="text-3xl font-black text-slate-900">{kCurrency(data.totalBudgetSpent, effectiveCurrency)}</p>
+                  <p className="text-xl font-black text-slate-900">{kCurrency(data.totalBudgetSpent, effectiveCurrency)}</p>
                   <p className="text-xs text-slate-500">sur {kCurrency(data.totalBudgetSold, effectiveCurrency)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Budget restant</p>
-                  <p className="text-3xl font-black text-emerald-600">{kCurrency(budgetRemaining, effectiveCurrency)}</p>
+                  <p className="text-xl font-black text-emerald-600">{kCurrency(budgetRemaining, effectiveCurrency)}</p>
                   <p className="text-xs text-slate-500">{budgetPct}% deja engage</p>
                 </div>
               </div>
@@ -341,7 +341,7 @@ export function GlobalDashboard() {
 
             <div>
               <p className="text-sm font-black text-slate-900">Jalons cles</p>
-              <div className="mt-3 space-y-3 text-sm">
+              <div className="mt-2 space-y-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <StatusDot tone="done" />
@@ -375,12 +375,12 @@ export function GlobalDashboard() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-lg font-black text-slate-900">Alertes prioritaires</h3>
+            <div className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-base font-black text-slate-900">Alertes prioritaires</h3>
                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">{alerts.length}</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {alerts.map((alert) => {
               const toneClass = alert.tone === 'red'
                 ? 'bg-red-50 text-red-700 border-red-100'
@@ -413,7 +413,7 @@ export function GlobalDashboard() {
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {dashboardCards.map((card) => (
-              <article key={card.title} className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <article key={card.title} className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className={`flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br ${card.accent} text-white shadow-sm`}>
@@ -426,28 +426,28 @@ export function GlobalDashboard() {
                   </button>
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <p className="text-xs text-slate-500">{card.primaryLabel}</p>
-                    <p className="mt-1 text-[2rem] font-black leading-none text-slate-950">{card.primaryValue}</p>
+                    <p className="mt-1 text-xl font-black leading-none text-slate-950">{card.primaryValue}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">{card.secondaryLabel}</p>
-                    <p className="mt-1 text-[1.6rem] font-black leading-none text-emerald-600">{card.secondaryValue}</p>
+                    <p className="mt-1 text-lg font-black leading-none text-emerald-600">{card.secondaryValue}</p>
                   </div>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-2">
                   <MiniTrend value={card.progressValue} total={card.progressMax} color={card.progressColor} />
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                   {card.stats.map((stat) => (
                     <span key={stat}>{stat}</span>
                   ))}
                 </div>
 
-                <button type="button" className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700">
+                <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700">
                   {card.footer}
                   <ArrowRight size={12} />
                 </button>
@@ -456,12 +456,12 @@ export function GlobalDashboard() {
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[1.45fr_0.8fr_0.7fr]">
-            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <article className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-slate-900">Avancement dans le temps</h3>
+            <h3 className="text-sm font-black text-slate-900">Avancement dans le temps</h3>
             <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">12 derniers mois</span>
           </div>
-          <div className="mt-4 flex items-center gap-4 text-xs">
+          <div className="mt-2 flex items-center gap-4 text-xs">
             <div className="inline-flex items-center gap-2 text-slate-500">
               <span className="h-2 w-6 rounded-full border border-dashed border-sky-400 bg-sky-50" />
               <span>Prevu</span>
@@ -471,7 +471,7 @@ export function GlobalDashboard() {
               <span>Avancement reel</span>
             </div>
           </div>
-          <div className="mt-4 h-72 w-full">
+          <div className="mt-2 h-36 w-full">
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full w-full">
               {[0, 25, 50, 75, 100].map((tick) => (
                 <line
@@ -530,14 +530,14 @@ export function GlobalDashboard() {
           </div>
             </article>
 
-            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <article className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-slate-900">Activite recente</h3>
+            <h3 className="text-sm font-black text-slate-900">Activite recente</h3>
             <button type="button" className="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir toute l'activite</button>
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-2 space-y-2">
             {recentFeed.map((item) => (
-              <div key={item.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+              <div key={item.id} className="flex items-start gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-2">
                 <span className={`mt-0.5 grid h-9 w-9 place-items-center rounded-full text-xs font-bold ${item.tone}`}>{item.initials}</span>
                 <div>
                   <p className="text-sm font-semibold text-slate-800">{item.title}</p>
@@ -548,20 +548,20 @@ export function GlobalDashboard() {
           </div>
             </article>
 
-            <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <article className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <Cloud size={18} className="text-amber-500" />
+                <Cloud size={16} className="text-amber-500" />
                 <h3 className="text-base font-black text-slate-900">Meteo sur site</h3>
               </div>
-              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4">
+              <div className="mt-2 rounded-2xl bg-slate-50 px-3 py-2">
                 <div className="flex items-center gap-3">
-                  <Cloud size={28} className="text-amber-500" />
+                  <Cloud size={22} className="text-amber-500" />
                   <div>
-                    <p className="text-4xl font-black text-slate-900">18°C</p>
-                    <p className="text-sm font-semibold text-slate-600">Ensoleille</p>
+                    <p className="text-2xl font-black text-slate-900">18°C</p>
+                    <p className="text-xs font-semibold text-slate-600">Ensoleille</p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-500">
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-500">
                   <div>
                     <p>Vent</p>
                     <p className="mt-1 font-bold text-slate-800">15 km/h</p>
@@ -581,9 +581,9 @@ export function GlobalDashboard() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-4 gap-2">
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
                 {weather.map((day) => (
-                  <div key={day.day} className="rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center">
+                  <div key={day.day} className="rounded-2xl border border-slate-100 bg-white px-2 py-2 text-center">
                     <p className="text-xs font-semibold text-slate-500">{day.day}</p>
                     <day.icon size={18} className={`mx-auto mt-2 ${day.tone}`} />
                     <p className="mt-2 text-sm font-black text-slate-900">{day.max}°</p>
@@ -592,7 +592,7 @@ export function GlobalDashboard() {
                 ))}
               </div>
 
-              <button type="button" className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+              <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
                 Voir la meteo detaillee
                 <ArrowRight size={12} />
               </button>

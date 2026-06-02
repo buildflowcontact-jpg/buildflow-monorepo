@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { AlertTriangle, Briefcase, CalendarDays, ClipboardList, FileText, FolderKanban, Home, PackageSearch, Settings2, ShieldCheck, Users2 } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ClipboardList, FileText, FolderKanban, Home, PackageSearch, Settings2, ShieldCheck, Users2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { usePermission } from '@/app/providers/PermissionProvider';
 
@@ -25,7 +25,6 @@ type NavItem = {
 
 const ESSENTIAL_ITEMS: NavItem[] = [
   { permission: 'module:dashboard', to: '/dashboard', label: 'Tableau de bord', icon: Home },
-  { permission: 'module:dashboard', to: '/dashboard', label: 'Projets', icon: Briefcase },
   { permission: 'module:piloter', to: '/taches', label: 'Taches', icon: ClipboardList },
   { permission: 'module:planifier', to: '/planifier', label: 'Planning', icon: CalendarDays },
   { permission: 'module:executer', to: '/documents', label: 'Documents', icon: FileText },
