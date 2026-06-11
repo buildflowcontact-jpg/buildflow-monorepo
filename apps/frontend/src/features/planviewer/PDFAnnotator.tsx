@@ -39,8 +39,9 @@ export function PDFAnnotator({ url }: { url: string }) {
                 onMouseOver={(content: any) => setTip(highlight, () => content)}
                 onMouseOut={hideTip}
                 key={index}
-                children={<Highlight {...highlight} isScrolledTo={isScrolledTo} />}
-              />
+              >
+                <Highlight {...highlight} isScrolledTo={isScrolledTo} />
+              </Popup>
             )}
           />
         )}

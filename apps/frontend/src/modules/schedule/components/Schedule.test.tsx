@@ -1,7 +1,7 @@
 // Schedule Components Tests
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { MockedProvider } from '@apollo/client/testing/react';
@@ -110,7 +110,7 @@ describe('CollisionAlert Component', () => {
   });
 
   it('should render collision with correct severity color', () => {
-    const { container } = render(
+    render(
       <MockedProvider>
         <CollisionAlert
           collision={mockCollision}

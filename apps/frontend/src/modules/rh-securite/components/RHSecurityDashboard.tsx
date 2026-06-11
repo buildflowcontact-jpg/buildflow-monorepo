@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { WorkerList } from './WorkerList';
 import { RoleManagement } from './RoleManagement';
 import { SecurityAuditLog } from './SecurityAuditLog';
@@ -16,11 +16,11 @@ export const RHSecurityDashboard: React.FC<RHSecurityDashboardProps> = ({ projec
   const navigate = useNavigate();
   const { can } = usePermission();
 
-  const tabs = [
+  const tabs = useMemo(() => [
     { id: 'workers' as Tab, label: 'Collaborateurs', icon: '👥' },
     ...(can('rh:manage') ? [{ id: 'roles' as Tab, label: 'Rôles et permissions', icon: '🔐' }] : []),
     ...(can('audit:read') || can('audit:limited') ? [{ id: 'audit' as Tab, label: 'Audit de sécurité', icon: '📋' }] : []),
-  ];
+  ], [can]);
 
   // Si l'onglet actif n'est plus disponible (perte de permission), revenir à 'workers'
   useEffect(() => {

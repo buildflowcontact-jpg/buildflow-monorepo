@@ -12,8 +12,6 @@ export function IFCAnnotator({ url }: { url: string }) {
   useEffect(() => {
     let viewer: any;
     let ifcjs: any;
-    let selectedModel: any;
-    let selectedExpressID: number | null = null;
     async function loadIFC() {
       if (!containerRef.current) return;
       ifcjs = await import('web-ifc-viewer');
@@ -21,7 +19,6 @@ export function IFCAnnotator({ url }: { url: string }) {
       await viewer.IFC.loadIfcUrl(url);
       setLoading(false);
       viewer.IFC.selector.pickIfcItem = async (_mesh: any, id: number, modelID: number) => {
-        selectedExpressID = id;
         const props = await viewer.IFC.getProperties(modelID, id, true, false);
         setSelectedProps(props);
       };

@@ -5,11 +5,8 @@ export function IFCViewer({ url }: { url: string }) {
 
   useEffect(() => {
     let viewer: any;
-    let model: any;
-    let ifcLoader: any;
     let three: any;
     let ifcjs: any;
-    let disposed = false;
     async function loadIFC() {
       if (!containerRef.current) return;
       // Dynamically import ifc.js and three.js
@@ -21,7 +18,6 @@ export function IFCViewer({ url }: { url: string }) {
     }
     loadIFC();
     return () => {
-      disposed = true;
       if (viewer) viewer.dispose();
     };
   }, [url]);

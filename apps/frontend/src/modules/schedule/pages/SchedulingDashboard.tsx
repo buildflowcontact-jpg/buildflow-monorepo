@@ -29,13 +29,10 @@ export const SchedulingDashboard: React.FC<SchedulingDashboardProps> = ({
 }) => {
   const { projectId: projectIdFromRoute } = useParams<{ projectId: string }>();
   const projectId = projectIdFromProps ?? projectIdFromRoute;
+  const scheduleProjectId = projectId ?? '';
   const [activeTab, setActiveTab] = useState<TabType['id']>('schedules');
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  if (!projectId) {
-    return <div className="p-4 text-red-600">Project ID not found</div>;
-  }
 
   const {
     schedules,
@@ -45,7 +42,11 @@ export const SchedulingDashboard: React.FC<SchedulingDashboardProps> = ({
     refreshSchedules,
     deleteSchedule,
     resolveCollision,
-  } = useSchedules(projectId);
+  } = useSchedules(scheduleProjectId);
+
+  if (!projectId) {
+    return <div className="p-4 text-red-600">Project ID not found</div>;
+  }
 
   const handleScheduleCreated = async (schedule: any) => {
     setSuccessMessage(

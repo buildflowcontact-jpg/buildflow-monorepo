@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CalendarDays, Check, Cloud, CloudRain, Info, MoreVertical, PackageX, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Cloud, CloudRain, Info, MoreVertical, PackageX, Users, Wallet } from 'lucide-react';
 import { usePortfolioDashboard } from '@/modules/kpi/hooks/usePortfolioDashboard';
 import { useAuth } from '@/modules/chantier/hooks/useAuth';
 import { useProjectStore } from '@/store/projectStore';
@@ -139,15 +139,6 @@ export function GlobalDashboard() {
       to: '/documents',
     },
   ] as const;
-
-  const recentActivity = [
-    `${leadProject?.name ?? 'Projet'}: commande verifiee`,
-    `${leadProject?.name ?? 'Projet'}: incident declare`,
-    `${leadProject?.name ?? 'Projet'}: document ajoute`,
-    `${leadProject?.name ?? 'Projet'}: point chantier valide`,
-  ];
-
-
 
   const plannedProgress = [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 90, 100];
   const actualBase = [8, 12, 22, 25, 32, 35, 44, 51, 58, 64, 72, 84];

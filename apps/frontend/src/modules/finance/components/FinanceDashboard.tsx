@@ -5,7 +5,7 @@ import { InvoiceManager } from './InvoiceManager';
 import { ExpenseTracker } from './ExpenseTracker';
 import { useBudgets, useExpenses, useInvoices } from '../hooks/useFinance';
 import { ModuleLayout } from '@/components/layout/ModuleLayout';
-import { SkeletonKpiGrid, SkeletonCard } from '@/components/ui/Skeleton';
+import { SkeletonKpiGrid } from '@/components/ui/Skeleton';
 import { usePermission } from '@/app/providers/PermissionProvider';
 
 type Tab = 'budget' | 'invoices' | 'expenses';

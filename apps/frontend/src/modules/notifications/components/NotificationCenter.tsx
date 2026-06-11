@@ -153,7 +153,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ projectI
                               e.stopPropagation();
                               markRead.mutate({
                                 notificationId: notification.id,
-                                isRead: !Boolean(notification.is_read),
+                                isRead: !notification.is_read,
                               });
                             }}
                             className="text-[11px] text-slate-500 hover:text-slate-800 flex-shrink-0"

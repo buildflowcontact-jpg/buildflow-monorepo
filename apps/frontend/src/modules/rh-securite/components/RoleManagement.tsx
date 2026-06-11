@@ -26,7 +26,6 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ projectId }) => 
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [formData, setFormData] = useState({ name: '', description: '' });
 
-  const selectedRole = roles?.find((r) => r.id === selectedRoleId);
   const { data: permissions } = useRolePermissions(selectedRoleId);
   const grantPermission = useGrantPermission();
   const revokePermission = useRevokePermission();

@@ -185,7 +185,9 @@ function loadFilters() {
 function saveFilters(filters: any) {
   try {
     localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
-  } catch {}
+  } catch {
+    // Ignore storage errors (private mode, quota exceeded).
+  }
 }
 
 export function Taches() {
@@ -473,7 +475,7 @@ export function Taches() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               className="h-10 rounded-xl"
               onClick={async () => {
                 try {
@@ -489,7 +491,7 @@ export function Taches() {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               className="h-10 rounded-xl"
               onClick={async () => {
                 try {

@@ -1,7 +1,7 @@
 // Worker Schedule Form Component
 // Create and edit worker schedules with real-time collision preview
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApolloClient } from '@apollo/client/react';
 import { gql } from '@apollo/client/core';
 
@@ -136,13 +136,6 @@ export const WorkerScheduleForm: React.FC<ScheduleFormProps> = ({
         type === 'checkbox'
           ? (e.target as HTMLInputElement).checked
           : value,
-    }));
-  };
-
-  const handleAddEquipment = (equipmentId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      equipment_ids: [...prev.equipment_ids, equipmentId],
     }));
   };
 

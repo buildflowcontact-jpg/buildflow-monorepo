@@ -31,7 +31,7 @@ export const IncidentInbox: React.FC<IncidentInboxProps> = ({ projectId }) => {
   const { mutate: updateIncident } = useUpdateIncident(projectId);
   const { availableActions, transition } = useIncidentWorkflow();
   const { can } = usePermissions(projectId);
-  const [selected, setSelected] = useState<IncidentRow | null>(null);
+  const [, setSelected] = useState<IncidentRow | null>(null);
 
   const incidents = data?.data ?? [];
   const totalCount = data?.count ?? 0;

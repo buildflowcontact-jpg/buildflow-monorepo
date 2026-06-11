@@ -59,7 +59,8 @@ const executeAction = async (item: QueuedAction): Promise<void> => {
     case "emit_event": {
       // Event sourcing — replay depuis la file offline
       // On reconstruit la row project_events sans le champ interne _domainEvent
-      const { _domainEvent: _ignored, ...row } = p as Record<string, unknown> & { _domainEvent?: unknown };
+      const { _domainEvent, ...row } = p as Record<string, unknown> & { _domainEvent?: unknown };
+      void _domainEvent;
       const { error } = await supabase
         .from("project_events")
         .insert(row as never);

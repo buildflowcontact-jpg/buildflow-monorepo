@@ -1,7 +1,7 @@
 // modules/incidents/components/IncidentCard.tsx
 import React from 'react';
 import type { IncidentRow } from '../types';
-import { formatDate, timeAgo } from '@/utils/date';
+import { timeAgo } from '@/utils/date';
 import { severityColor, statusColor } from '@/utils/helpers';
 
 interface IncidentCardProps {

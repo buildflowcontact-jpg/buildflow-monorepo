@@ -58,7 +58,7 @@ export function PiloterDashboard({ projectName = 'Projet actif' }: { projectName
   const [incidentBySeverity, setIncidentBySeverity] = useState(incidentBySeverityInit)
   const [incidentByZone, setIncidentByZone] = useState(incidentByZoneInit)
   const [delayByLot, setDelayByLot] = useState(delayByLotInit)
-  const [teamPerf, setTeamPerf] = useState(teamPerfInit)
+  const [teamPerf] = useState(teamPerfInit)
   const form = useZodForm(incidentSchema, {
     defaultValues: { description: "" }
   })

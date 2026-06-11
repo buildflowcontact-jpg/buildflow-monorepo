@@ -7,12 +7,12 @@ import { Gantt } from "./Gantt"
 // Mock createSVGPoint et getBBox pour JSDOM
 beforeAll(() => {
   if (!SVGSVGElement.prototype.createSVGPoint) {
-    SVGSVGElement.prototype.createSVGPoint = function () {
-      return { x: 0, y: 0, matrixTransform: () => ({ x: 0, y: 0 }) };
+    SVGSVGElement.prototype.createSVGPoint = function (): DOMPoint {
+      return new DOMPoint(0, 0, 0, 1);
     };
   }
-  if (!SVGElement.prototype.getBBox) {
-    SVGElement.prototype.getBBox = () => ({ x: 0, y: 0, width: 100, height: 20 });
+  if (!("getBBox" in SVGElement.prototype)) {
+    (SVGElement.prototype as unknown as { getBBox: () => DOMRect }).getBBox = () => new DOMRect(0, 0, 100, 20);
   }
 });
 

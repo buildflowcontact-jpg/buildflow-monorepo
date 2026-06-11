@@ -114,7 +114,7 @@ export function PurchaseOrderList({ projectId, view = 'to_order' }: Props) {
     return () => {
       mounted = false;
     };
-  }, [projectId, orderRefsKey]);
+  }, [orders, projectId, orderRefsKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

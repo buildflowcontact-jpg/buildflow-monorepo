@@ -43,7 +43,7 @@ export function useSyncUITheme(user: { id?: string; user_metadata?: Record<strin
     }
 
     lastSyncedThemeRef.current = null;
-  }, [setIsThemeSyncing, setUITheme, uiTheme, user?.id, user?.user_metadata]);
+  }, [setIsThemeSyncing, setThemeSyncError, setUITheme, uiTheme, user?.id, user?.user_metadata]);
 
   useEffect(() => {
     if (!user?.id || initializedUserRef.current !== user.id) {

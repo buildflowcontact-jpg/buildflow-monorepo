@@ -1,12 +1,9 @@
--- Schéma SQL BuildFlow Evolution : Logiciel de Gestion BTP Complet
--- À exécuter dans Supabase
-
 -- ==========================================
 -- 1. GESTION DES PROJETS & STRUCTURE
 -- ==========================================
 
 -- Table des projets
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   address TEXT,
@@ -19,7 +16,7 @@ CREATE TABLE projects (
 );
 
 -- Phases du projet (ex: Terrassement, Gros Œuvre, Second Œuvre)
-CREATE TABLE project_phases (
+CREATE TABLE IF NOT EXISTS project_phases (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -30,7 +27,7 @@ CREATE TABLE project_phases (
 );
 
 -- Tâches (WBS - Work Breakdown Structure)
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   phase_id UUID REFERENCES project_phases(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -50,14 +47,14 @@ CREATE TABLE tasks (
 -- ==========================================
 
 -- Rôles (RBAC)
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT UNIQUE NOT NULL, -- 'ADMIN', 'CONDUCTEUR_TRAVAUX', 'CHEF_CHANTIER', 'OUVRIER'
   permissions JSONB DEFAULT '{}'
 );
 
 -- Profils utilisateurs (liés à Supabase Auth)
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
   role_id UUID REFERENCES roles(id),
@@ -68,11 +65,11 @@ CREATE TABLE profiles (
 );
 
 -- Affectations (Qui travaille sur quel projet)
-CREATE TABLE project_assignments (
+CREATE TABLE IF NOT EXISTS project_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  role_on_project TEXT, -- Rôle spécifique au projet
+  role_on_project TEXT,
   assigned_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -81,7 +78,7 @@ CREATE TABLE project_assignments (
 -- ==========================================
 
 -- Pointages (Timesheets)
-CREATE TABLE timesheets (
+CREATE TABLE IF NOT EXISTS timesheets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
@@ -93,7 +90,7 @@ CREATE TABLE timesheets (
 );
 
 -- Rapports Journaliers (Journal de Chantier)
-CREATE TABLE site_reports (
+CREATE TABLE IF NOT EXISTS site_reports (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   author_id UUID REFERENCES profiles(id),
@@ -109,16 +106,16 @@ CREATE TABLE site_reports (
 -- 4. GESTION DOCUMENTAIRE (Améliorée)
 -- ==========================================
 
-CREATE TABLE documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   category TEXT NOT NULL, -- 'PLANS', 'CCTP', 'SÉCURITÉ', 'CONTRATS'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE document_versions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS document_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
   version_number INT NOT NULL,
   storage_path TEXT NOT NULL,
@@ -137,7 +134,7 @@ CREATE UNIQUE INDEX one_bpe_per_document ON document_versions(document_id) WHERE
 -- ==========================================
 
 -- Lignes budgétaires
-CREATE TABLE budget_lines (
+CREATE TABLE IF NOT EXISTS budget_lines (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   label TEXT NOT NULL,
@@ -147,7 +144,7 @@ CREATE TABLE budget_lines (
 );
 
 -- Dépenses (Achats, Sous-traitance)
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   budget_line_id UUID REFERENCES budget_lines(id) ON DELETE CASCADE,
   amount NUMERIC(15, 2) NOT NULL,
@@ -158,7 +155,7 @@ CREATE TABLE expenses (
 );
 
 -- Inventaire Matériel
-CREATE TABLE equipment (
+CREATE TABLE IF NOT EXISTS equipment (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   category TEXT,
@@ -172,8 +169,8 @@ CREATE TABLE equipment (
 -- 6. ÉVÉNEMENTS & LOGS (Iceberg)
 -- ==========================================
 
-CREATE TABLE project_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS project_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   author_id UUID REFERENCES profiles(id),
   type VARCHAR(50) NOT NULL, -- 'INCIDENT', 'TASK_DONE', 'DOC_VALIDATED', 'EXPENSE', 'DELAY'

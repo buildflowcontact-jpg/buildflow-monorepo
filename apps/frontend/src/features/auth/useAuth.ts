@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, createContext } from "react"
+import { useContext, createContext } from "react"
 
 export function useAuth() {
   // Mock simple pour tests : non connecté

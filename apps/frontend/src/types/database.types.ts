@@ -735,7 +735,7 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: {};
+    Views: Record<string, never>;
     Functions: {
       project_role: {
         Args: { p_project_id: string };
@@ -764,7 +764,7 @@ export interface Database {
         Returns: boolean;
       };
     };
-    Enums: {};
-    CompositeTypes: {};
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
