@@ -1,5 +1,7 @@
 // Edge Function (Supabase) pour générer le daily_report à 17h
+// @ts-ignore Deno runtime environment, not Node.js
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+// @ts-ignore Deno runtime environment, not Node.js
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 type ProjectRow = {
@@ -55,6 +57,7 @@ const emptyWeather = (source = 'unavailable'): WeatherData => ({
 });
 
 async function fetchWeather(project: ProjectRow): Promise<WeatherData> {
+  // @ts-ignore Deno API not available in Node.js context
   const apiKey = Deno.env.get('OPENWEATHER_API_KEY');
   const lat = project.latitude;
   const lon = project.longitude;
@@ -149,9 +152,12 @@ async function collectValidatedTasks(supabase: SupabaseClient, projectId: string
   return data ?? [];
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
+  // @ts-ignore Deno API not available in Node.js context
   const supabase = createClient(
+    // @ts-ignore Deno API not available in Node.js context
     Deno.env.get('SUPABASE_URL')!,
+    // @ts-ignore Deno API not available in Node.js context
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
